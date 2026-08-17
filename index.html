@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Integrado de Gestão de Escalas e Trocas — SAMU 192</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { margin: 0; padding: 15px; background-color: #f1f5f9; color: #0f172a; }
+
+    header { background: #b71c1c; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
+    .user-info { font-size: 13px; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
+
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; flex-wrap: wrap; }
+    .tab-btn { padding: 10px 18px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; background: #e2e8f0; color: #334155; }
+    .tab-btn.active { background: #b71c1c; color: #fff; }
+
+    .card { background: #fff; padding: 18px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; }
+    input, select { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; outline: none; }
+    input:disabled, select:disabled { background-color: #e2e8f0; cursor: not-allowed; }
+
+    .btn { padding: 8px 14px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; }
+    .btn-primary { background: #2563eb; }
+    .btn-success { background: #16a34a; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-danger { background: #dc2626; }
+    .btn-info { background: #0284c7; }
+    .btn-dark { background: #334155; }
+
+    .table-responsive { overflow-x: auto; background: #fff; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+    th { background: #1e293b; color: #fff; padding: 8px; border: 1px solid #0f172a; font-weight: 600; text-transform: uppercase; }
+    td { padding: 6px; border: 1px solid #cbd5e1; vertical-align: middle; }
+    tr:nth-child(even) { background-color: #f8fafc; }
+
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+    .badge-pendente { background: #fef3c7; color: #b45309; }
+    .badge-aprovado { background: #dcfce7; color: #15803d; }
+    .badge-recusado { background: #fee2e2; color: #b91c1c; }
+    .badge-cancelado { background: #e2e8f0; color: #475569; }
+
+    .st-i { background-color: #fef08a; font-weight: bold; color: #854d0e; }
+    .st-fol { background-color: #dcfce7; color: #166534; }
+    .col-fds { background-color: #e2e8f0 !important; font-weight: bold; }
+
+    .header-institucional { display: none; text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px; }
+    .header-institucional h2 { margin: 0; font-size: 11pt; text-transform: uppercase; color: #000; }
+    .header-institucional h3 { margin: 2px 0; font-size: 9.5pt; color: #000; }
+    .header-institucional p { margin: 0; font-size: 8.5pt; font-weight: bold; color: #000; }
+
+    .status-nuvem { font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: #dcfce7; color: #15803d; display: inline-flex; align-items: center; gap: 4px; }
+
+    .rodape-assinaturas { display: none; }
+
+    @media print {
+      .no-print, header, .nav-tabs, .card h3, .grid-form { display: none !important; }
+      body { background: #fff; padding: 0; margin: 0; color: #000; }
+      .card { box-shadow: none; padding: 0; margin: 0; }
+      .header-institucional { display: block !important; }
+      .table-responsive { overflow: visible !important; }
+
+      body.modo-retrato { font-size: 7.2pt; }
+      body.modo-retrato table { width: 100% !important; font-size: 7.2pt !important; }
+      body.modo-retrato th { background-color: #f1f5f9 !important; color: #000 !important; padding: 2px 1px !important; border: 1px solid #000 !important; }
+      body.modo-retrato td { padding: 1.5px 1px !important; border: 1px solid #000 !important; }
+
+      body.modo-paisagem { font-size: 6.5pt; }
+      body.modo-paisagem table { width: 100% !important; font-size: 6.5pt !important; table-layout: fixed !important; }
+      body.modo-paisagem th, body.modo-paisagem td { border: 1px solid #000 !important; padding: 1px 0 !important; }
+
+      .st-i { background-color: #fef08a !important; color: #000 !important; -webkit-print-color-adjust: exact; }
+      .st-fol { background-color: #ffffff !important; color: #000 !important; -webkit-print-color-adjust: exact; }
+      .col-fds { background-color: #e2e8f0 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
+
+      .rodape-assinaturas { display: flex !important; justify-content: space-between; align-items: flex-end; margin-top: 15px; font-size: 7.5pt; }
+      .campo-assinatura { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 3px; }
+    }
+  </style>
+</head>
+<body class="modo-retrato">
+
+  <header class="no-print">
+    <div>
+      <h1>SAMU 192 — Módulo Integrado de Escalas e Trocas</h1>
+      <small>Unidade de Suporte Básico — USB 011 Orleans</small>
+    </div>
+    <div class="user-info">
+      <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
+      Perfil: 
+      <select id="selPerfilUsuario" onchange="alternarPerfil(this.value)" style="padding: 4px; font-weight: bold; background: #fff; color: #000;">
+        <option value="Servidor">Servidor: Daniel A. Fernandes</option>
+        <option value="Admin">GESTOR / ADMINISTRADOR</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="nav-tabs no-print">
+    <button class="tab-btn active" onclick="trocarAba('colaboradores')">👥 Colaboradores</button>
+    <button class="tab-btn" onclick="trocarAba('afastamentos')">🏥 Licenças e Escala Temporária</button>
+    <button class="tab-btn" onclick="trocarAba('escalas')">📅 Gerador de Escalas</button>
+    <button class="tab-btn" onclick="trocarAba('trocas')">🔄 Trocas de Plantão</button>
+    <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
+  </div>
+
+  <div id="abaColaboradores" class="card">
+    <h3 id="tituloFormColaborador">Cadastrar / Editar Colaborador</h3>
+    <form id="formColaborador" onsubmit="salvarColaborador(event)">
+      <input type="hidden" id="cadId">
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" id="cadNome" required placeholder="Ex: Nome Completo">
+        </div>
+        <div class="form-group">
+          <label>CPF (Login)</label>
+          <input type="text" id="cadCPF" required placeholder="000.000.000-00">
+        </div>
+        <div class="form-group">
+          <label>Função</label>
+          <select id="cadFuncao" required>
+            <option value="Condutor Socorrista">Condutor Socorrista</option>
+            <option value="Técnico(a) de Enfermagem Socorrista">Técnico(a) de Enfermagem Socorrista</option>
+            <option value="Enfermeira Coordenadora">Enfermeira Coordenadora</option>
+            <option value="Administrativo">Administrativo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>COREN</label>
+          <input type="text" id="cadCoren" placeholder="Nº COREN">
+        </div>
+        <div class="form-group">
+          <label>CNH</label>
+          <input type="text" id="cadCnh" placeholder="Nº CNH">
+        </div>
+        <div class="form-group">
+          <label>Telefone</label>
+          <input type="text" id="cadFone" placeholder="(48) 99999-9999">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="cadEmail" placeholder="email@dominio.com">
+        </div>
+        <button class="btn btn-success" type="submit" id="btnSalvarColaborador">💾 Salvar Servidor na Nuvem</button>
+        <button class="btn btn-warning" type="button" onclick="cancelarEdicao()">❌ Cancelar Edição</button>
+        <button class="btn btn-danger" type="button" onclick="restaurarPadraoColaboradores()">🔄 Resetar Tabela Oficial</button>
+      </div>
+    </form>
+
+    <h3 style="margin-top:25px;">Servidores Cadastrados</h3>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>NOME COMPLETO</th>
+            <th>CPF</th>
+            <th>FUNÇÃO</th>
+            <th>COREN</th>
+            <th>CNH</th>
+            <th>TELEFONE</th>
+            <th>E-MAIL</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tbColaboradores"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="abaAfastamentos" class="card" style="display:none;">
+    <h3 id="tituloFormAfastamento">Registrar Licença e Cobertura Diária por Função</h3>
+    <form id="formAfastamento" onsubmit="salvarAfastamento(event)">
+      <input type="hidden" id="afastId">
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Servidor de Atestado / Licença / Férias</label>
+          <select id="afastServidor" onchange="gerarGradeSubstitutosDia()" required></select>
+        </div>
+        <div class="form-group">
+          <label>Início da Licença</label>
+          <input type="date" id="afastInicio" onchange="gerarGradeSubstitutosDia()" required>
+        </div>
+        <div class="form-group">
+          <label>Término da Licença</label>
+          <input type="date" id="afastFim" onchange="gerarGradeSubstitutosDia()" required>
+        </div>
+        <div class="form-group">
+          <label>Regime Temporário Adotado</label>
+          <select id="afastRegimeTipo" onchange="toggleRegimeCustomAfastamento()" required>
+            <option value="24x96">24x96 (Cobertura Individual de Plantões Reais)</option>
+            <option value="24x72">24x72 (Rodízio Acelerado)</option>
+            <option value="CUSTOM">Outra Escala (Personalizado)</option>
+          </select>
+        </div>
+        <div class="form-group" id="grpAfastCustom" style="display:none;">
+          <label>Horas Trabalho x Horas Folga</label>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <input type="number" id="afastHorasTrab" placeholder="24" style="width:70px;">
+            <span>x</span>
+            <input type="number" id="afastHorasFolga" placeholder="48" style="width:70px;">
+          </div>
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Observação / Motivo</label>
+          <input type="text" id="afastObs" placeholder="Ex: Férias / Atestado Médico" required>
+        </div>
+      </div>
+
+      <div id="boxSubstitutosDiarios" style="margin-top: 15px; background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <label style="color:#b71c1c; font-size:12px;"><b>PLANTÕES REAIS DO PERÍODO (SUBSTITUTOS FILTRADOS POR CATEGORIA):</b></label>
+        <div id="containerGradeDias" style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
+          <span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar a grade.</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <button class="btn btn-primary" type="submit" id="btnSalvarAfastamento">🏥 Salvar Licença na Nuvem</button>
+        <button class="btn btn-warning" type="button" onclick="cancelarEdicaoAfastamento()">❌ Cancelar</button>
+      </div>
+    </form>
+
+    <h3 style="margin-top:25px;">Licenças e Coberturas Ativas</h3>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>SERVIDOR AFASTADO</th>
+            <th>FUNÇÃO</th>
+            <th>PERÍODO</th>
+            <th>REGIME ADOTADO</th>
+            <th>SUBSTITUTOS DOS PLANTÕES REAIS</th>
+            <th>OBSERVAÇÃO</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tbAfastamentos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="abaEscalas" class="card" style="display:none;">
+    <div class="grid-form no-print">
+      <div class="form-group">
+        <label>Mês / Ano da Escala</label>
+        <input type="month" id="escalaMesAno" value="2026-09" onchange="renderizarEscalas()">
+      </div>
+      <div class="form-group">
+        <label>Data-Base Inicial da Sequência</label>
+        <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas()">
+      </div>
+      <div class="form-group">
+        <label>Regime Padrão da Escala</label>
+        <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
+          <option value="24x96">Escala Operacional 24x96</option>
+          <option value="24x72">Escala Operacional 24x72</option>
+          <option value="40h">Escala Administrativa 40h</option>
+          <option value="coren">Matriz Oficial COREN</option>
+          <option value="CUSTOM">Cadastrar Nova Escala (Personalizada)...</option>
+        </select>
+      </div>
+      <div class="form-group" id="grpGeradorCustom" style="display:none;">
+        <label>Horas Trabalho x Folga</label>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <input type="number" id="genHorasTrab" value="12" style="width:60px;" onchange="renderizarEscalas()">
+          <span>x</span>
+          <input type="number" id="genHorasFolga" value="36" style="width:60px;" onchange="renderizarEscalas()">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
+      <button class="btn btn-success" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
+    </div>
+
+    <div class="header-institucional">
+      <h2>ESTADO DE SANTA CATARINA — SECRETARIA MUNICIPAL DE SAÚDE DE ORLEANS</h2>
+      <h3>UNIDADE DE SUPORTE BÁSICO DE ATENDIMENTO MÓVEL — USB 011 ORLEANS</h3>
+      <p id="tituloEscalaImpressao">ESCALA OPERACIONAL MENSAL — SETEMBRO DE 2026</p>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 10px;">
+      <table id="tblGerada">
+        <thead id="headTblGerada"></thead>
+        <tbody id="bodyTblGerada"></tbody>
+      </table>
+    </div>
+
+    <div class="rodape-assinaturas">
+      <div class="campo-assinatura">Responsável Técnico (RT) Enfermagem / COREN-SC</div>
+      <div class="campo-assinatura">Coordenação Operacional SAMU 192</div>
+    </div>
+  </div>
+
+  <div id="abaTrocas" class="card" style="display:none;">
+    <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
+    <form id="formTroca" onsubmit="solicitarTroca(event)">
+      <input type="hidden" id="trocaIdEdit">
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Data do Meu Plantão</label>
+          <input type="date" id="trocaDataMinha" required>
+        </div>
+        <div class="form-group">
+          <label>Substituto (Quem vai cobrir)</label>
+          <select id="trocaSubstituto" required></select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de Troca</label>
+          <select id="trocaTipo" onchange="toggleTipoTroca()">
+            <option value="Direta">Troca por Troca (Com Devolução Definida)</option>
+            <option value="A Haver">A Haver (Sem Data Definida)</option>
+          </select>
+        </div>
+        <div class="form-group" id="grpDataDevolucao">
+          <label>Data de Devolução *</label>
+          <input type="date" id="trocaDataDevolucao" required>
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Justificativa / Motivo</label>
+          <input type="text" id="trocaMotivo" placeholder="Motivo da solicitação de troca" required>
+        </div>
+        <button class="btn btn-warning" type="submit" id="btnSalvarTroca">📩 Enviar Solicitação para a Nuvem</button>
+        <button class="btn btn-dark" type="button" id="btnCancelarTroca" style="display:none;" onclick="cancelarEdicaoTroca()">❌ Cancelar</button>
+      </div>
+    </form>
+
+    <h3 style="margin-top:25px;">Painel de Solicitações e Histórico Auditável</h3>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>SOLICITANTE</th>
+            <th>DATA PLANTÃO</th>
+            <th>SUBSTITUTO</th>
+            <th>TIPO</th>
+            <th>DEVOLUÇÃO</th>
+            <th>MOTIVO</th>
+            <th>STATUS</th>
+            <th>AÇÕES / ACEITE</th>
+          </tr>
+        </thead>
+        <tbody id="tbTrocas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="abaAdmin" class="card" style="display:none;">
+    <h3>⚙️ Gestão Administrativa, Cancelamento e Auditoria de Trocas</h3>
+    <p style="font-size: 12px; color: #475569;">Como Administrador, você pode alterar datas, substituir nomes ou cancelar/suspender trocas já aprovadas mediante justificativa.</p>
+
+    <div class="table-responsive" style="margin-top: 15px;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>SOLICITANTE</th>
+            <th>DATA PLANTÃO</th>
+            <th>SUBSTITUTO</th>
+            <th>DEVOLUÇÃO</th>
+            <th>STATUS ATUAL</th>
+            <th>MOTIVO DA TROCA</th>
+            <th>AÇÕES DE GESTÃO (ADMIN)</th>
+          </tr>
+        </thead>
+        <tbody id="tbAdminTrocas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CONFIGURAÇÃO DA CONEXÃO DA NUVEM SUPABASE
+    // =========================================================================
+    const SUPABASE_URL = "SUA_URL_DO_SUPABASE_AQUI"; 
+    const SUPABASE_KEY = "SUA_CHAVE_ANON_DO_SUPABASE_AQUI"; 
+    
+    let dbNuvem = null;
+    try {
+      if (typeof supabase !== 'undefined' && SUPABASE_URL !== "SUA_URL_DO_SUPABASE_AQUI") {
+        dbNuvem = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch(e) { console.log("Supabase não configurado. Rodando em modo fallback."); }
+
+    const colaboradoresOficiais = [
+      { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", idDupla: 2 },
+      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Condutor Socorrista", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", idDupla: 4 },
+      { id: 3, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", idDupla: 4 },
+      { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", idDupla: 4 },
+      { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", idDupla: 2 },
+      { id: 6, nome: "Luis Eduardo Formanski Vitório", cpf: "091.311.529-02", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "1551746", cnh: "N/A", fone: "(48) 99991-1598", email: "eduardo.fvitorio@hotmail.com", idDupla: 3 },
+      { id: 7, nome: "Márcio Becker", cpf: "000.172.329-45", funcao: "Condutor Socorrista", coren: "N/A", cnh: "17232945", fone: "(48) 99956-3192", email: "beckermarcio916@gmail.com", idDupla: 1 },
+      { id: 8, nome: "Renato Cândido", cpf: "035.784.239-12", funcao: "Condutor Socorrista", coren: "N/A", cnh: "2157610821", fone: "(48) 99177-0565", email: "candidorenato1@gmail.com", idDupla: 3 },
+      { id: 9, nome: "Rinaldo Calegario", cpf: "019.739.469-80", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "331871", cnh: "N/A", fone: "(48) 98819-8058", email: "rinaldocalegario192@gmail.com", idDupla: 1 },
+      { id: 10, nome: "Suandre Adão Machado", cpf: "027.333.709-28", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "99894", cnh: "N/A", fone: "(48) 99602-8693", email: "suandremachado@gmail.com", idDupla: 0 },
+      { id: 11, nome: "Vanderlei José Tasca", cpf: "803.699.019-91", funcao: "Condutor Socorrista", coren: "N/A", cnh: "940076430", fone: "(48) 99192-6750", email: "vandotasca22@gmail.com", idDupla: 0 }
+    ];
+
+    const duplasPadrao = [
+      { cond: "Vanderlei José Tasca", tec: "Suandre Adão Machado" },
+      { cond: "Márcio Becker", tec: "Rinaldo Calegario" },
+      { cond: "Lucas Vieira Mendes", tec: "Clênio Borges" },
+      { cond: "Renato Cândido", tec: "Luis Eduardo Formanski Vitório" },
+      { cond: "Daniel Alexandre Fernandes", tec: "Gicerléia Trindade da Rosa" }
+    ];
+
+    let colaboradores = [];
+    let trocas = [];
+    let afastamentos = [];
+    let perfilAtual = "Servidor";
+
+    function ordenarAlfabeticamente() {
+      colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    }
+
+    // CARREGAMENTO E SINCRONIZAÇÃO NUVEM
+    async function carregarDados() {
+      if (dbNuvem) {
+        try {
+          const { data: cData } = await dbNuvem.from('colaboradores').select('*');
+          if (cData && cData.length > 0) colaboradores = cData;
+          else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
+
+          const { data: tData } = await dbNuvem.from('trocas').select('*');
+          if (tData) trocas = tData;
+
+          const { data: aData } = await dbNuvem.from('afastamentos').select('*');
+          if (aData) afastamentos = aData;
+
+          document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Sincronizada";
+        } catch(e) {
+          carregarFallbackLocal();
+        }
+      } else {
+        carregarFallbackLocal();
+      }
+      ordenarAlfabeticamente();
+      renderizarTudo();
+    }
+
+    function carregarFallbackLocal() {
+      try {
+        const cSalvos = localStorage.getItem('samu_colaboradores_v20');
+        colaboradores = cSalvos ? JSON.parse(cSalvos) : JSON.parse(JSON.stringify(colaboradoresOficiais));
+        const tSalvas = localStorage.getItem('samu_trocas_v20');
+        if (tSalvas) trocas = JSON.parse(tSalvas);
+        const aSalvos = localStorage.getItem('samu_afastamentos_v20');
+        if (aSalvos) afastamentos = JSON.parse(aSalvos);
+      } catch(e){}
+      document.getElementById("stNuvem").innerText = "📱 Modo Local (Pendente Config. Supabase)";
+      document.getElementById("stNuvem").style.background = "#fef3c7";
+      document.getElementById("stNuvem").style.color = "#b45309";
+    }
+
+    async function salvarColaboradoresStorage() {
+      ordenarAlfabeticamente();
+      if (dbNuvem) {
+        await dbNuvem.from('colaboradores').upsert(colaboradores);
+      } else {
+        localStorage.setItem('samu_colaboradores_v20', JSON.stringify(colaboradores));
+      }
+    }
+
+    async function salvarTrocasStorage() {
+      if (dbNuvem) {
+        await dbNuvem.from('trocas').upsert(trocas);
+      } else {
+        localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
+      }
+    }
+
+    async function salvarAfastamentosStorage() {
+      if (dbNuvem) {
+        await dbNuvem.from('afastamentos').upsert(afastamentos);
+      } else {
+        localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
+      }
+    }
+
+    function renderizarTudo() {
+      renderizarTabelaColaboradores();
+      preencherSelects();
+      renderizarTabelaAfastamentos();
+      renderizarTabelaTrocas();
+      renderizarAdminTrocas();
+      renderizarEscalas();
+    }
+
+    function init() {
+      carregarDados();
+    }
+
+    function alternarPerfil(perfil) {
+      perfilAtual = perfil;
+      document.getElementById("btnTabAdmin").style.display = (perfil === 'Admin') ? 'block' : 'none';
+      renderizarTabelaTrocas();
+      renderizarAdminTrocas();
+    }
+
+    function trocarAba(aba) {
+      document.getElementById("abaColaboradores").style.display = (aba === 'colaboradores') ? "block" : "none";
+      document.getElementById("abaAfastamentos").style.display = (aba === 'afastamentos') ? "block" : "none";
+      document.getElementById("abaEscalas").style.display = (aba === 'escalas') ? "block" : "none";
+      document.getElementById("abaTrocas").style.display = (aba === 'trocas') ? "block" : "none";
+      document.getElementById("abaAdmin").style.display = (aba === 'admin') ? "block" : "none";
+
+      const btns = document.querySelectorAll(".tab-btn");
+      btns.forEach((b, idx) => {
+        b.classList.toggle("active", 
+          (aba === 'colaboradores' && idx === 0) || 
+          (aba === 'afastamentos' && idx === 1) || 
+          (aba === 'escalas' && idx === 2) || 
+          (aba === 'trocas' && idx === 3) ||
+          (aba === 'admin' && idx === 4)
+        );
+      });
+    }
+
+    function alterarRegimeVisual(val) {
+      document.body.className = (val === 'coren') ? 'modo-paisagem' : 'modo-retrato';
+      renderizarEscalas();
+    }
+
+    function imprimirAjustado() {
+      const regime = document.getElementById("escalaRegime").value;
+      let stylePage = document.getElementById("dynamicPageStyle");
+      if (!stylePage) {
+        stylePage = document.createElement("style");
+        stylePage.id = "dynamicPageStyle";
+        document.head.appendChild(stylePage);
+      }
+
+      if (regime === "coren") {
+        stylePage.innerHTML = "@page { size: A4 landscape; margin: 3mm; }";
+      } else {
+        stylePage.innerHTML = "@page { size: A4 portrait; margin: 4mm; }";
+      }
+
+      window.print();
+    }
+
+    // CADASTRO COLABORADORES
+    async function salvarColaborador(e) {
+      e.preventDefault();
+      const idEdit = document.getElementById("cadId").value;
+      
+      if (idEdit) {
+        const idx = colaboradores.findIndex(c => c.id == idEdit);
+        if (idx !== -1) {
+          colaboradores[idx].nome = document.getElementById("cadNome").value.trim();
+          colaboradores[idx].cpf = document.getElementById("cadCPF").value.trim();
+          colaboradores[idx].funcao = document.getElementById("cadFuncao").value;
+          colaboradores[idx].coren = document.getElementById("cadCoren").value.trim() || "N/A";
+          colaboradores[idx].cnh = document.getElementById("cadCnh").value.trim() || "N/A";
+          colaboradores[idx].fone = document.getElementById("cadFone").value.trim() || "-";
+          colaboradores[idx].email = document.getElementById("cadEmail").value.trim() || "-";
+        }
+        alert("Dados do servidor atualizados!");
+      } else {
+        const novo = {
+          id: Date.now(),
+          nome: document.getElementById("cadNome").value.trim(),
+          cpf: document.getElementById("cadCPF").value.trim(),
+          funcao: document.getElementById("cadFuncao").value,
+          coren: document.getElementById("cadCoren").value.trim() || "N/A",
+          cnh: document.getElementById("cadCnh").value.trim() || "N/A",
+          fone: document.getElementById("cadFone").value.trim() || "-",
+          email: document.getElementById("cadEmail").value.trim() || "-"
+        };
+        colaboradores.push(novo);
+        alert("Servidor cadastrado!");
+      }
+
+      await salvarColaboradoresStorage();
+      cancelarEdicao();
+      renderizarTabelaColaboradores();
+      preencherSelects();
+      renderizarEscalas();
+    }
+
+    function editarColaborador(id) {
+      const c = colaboradores.find(item => item.id == id);
+      if (c) {
+        document.getElementById("cadId").value = c.id;
+        document.getElementById("cadNome").value = c.nome;
+        document.getElementById("cadCPF").value = c.cpf;
+        document.getElementById("cadFuncao").value = c.funcao;
+        document.getElementById("cadCoren").value = c.coren !== "N/A" ? c.coren : "";
+        document.getElementById("cadCnh").value = c.cnh !== "N/A" ? c.cnh : "";
+        document.getElementById("cadFone").value = c.fone;
+        document.getElementById("cadEmail").value = c.email;
+
+        document.getElementById("tituloFormColaborador").innerText = `Editando Servidor: ${c.nome}`;
+        document.getElementById("btnSalvarColaborador").innerText = "💾 Salvar Alterações na Nuvem";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function cancelarEdicao() {
+      document.getElementById("cadId").value = "";
+      document.getElementById("formColaborador").reset();
+      document.getElementById("tituloFormColaborador").innerText = "Cadastrar / Editar Colaborador";
+      document.getElementById("btnSalvarColaborador").innerText = "💾 Salvar Servidor na Nuvem";
+    }
+
+    async function restaurarPadraoColaboradores() {
+      if (confirm("Deseja restaurar a lista oficial de colaboradores do SAMU Orleans?")) {
+        colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
+        await salvarColaboradoresStorage();
+        cancelarEdicao();
+        renderizarTabelaColaboradores();
+        preencherSelects();
+        renderizarEscalas();
+      }
+    }
+
+    function renderizarTabelaColaboradores() {
+      ordenarAlfabeticamente();
+      const tb = document.getElementById("tbColaboradores");
+      tb.innerHTML = "";
+      colaboradores.forEach(c => {
+        tb.innerHTML += `
+          <tr>
+            <td style="text-align:left;"><b>${c.nome}</b></td>
+            <td>${c.cpf}</td>
+            <td>${c.funcao}</td>
+            <td>${c.coren}</td>
+            <td>${c.cnh}</td>
+            <td>${c.fone}</td>
+            <td style="text-align:left;">${c.email}</td>
+            <td>
+              <button class="btn btn-info" onclick="editarColaborador(${c.id})">✏️ Editar</button>
+              <button class="btn btn-danger" onclick="excluirColaborador(${c.id})">Excluir</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function excluirColaborador(id) {
+      if (confirm("Confirma a exclusão deste colaborador?")) {
+        colaboradores = colaboradores.filter(c => c.id !== id);
+        if (dbNuvem) await dbNuvem.from('colaboradores').delete().eq('id', id);
+        await salvarColaboradoresStorage();
+        renderizarTabelaColaboradores();
+        preencherSelects();
+        renderizarEscalas();
+      }
+    }
+
+    function preencherSelects() {
+      ordenarAlfabeticamente();
+      const selSubst = document.getElementById("trocaSubstituto");
+      const selAfast = document.getElementById("afastServidor");
+
+      if (selSubst) selSubst.innerHTML = "";
+      if (selAfast) selAfast.innerHTML = "";
+
+      colaboradores.forEach(c => {
+        if (selSubst) selSubst.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
+        if (selAfast) selAfast.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
+      });
+    }
+
+    // FILTRO RIGOROSO E EXCLUSIVO DE CONDUTOR E TÉCNICO
+    function toggleRegimeCustomAfastamento() {
+      const tipo = document.getElementById("afastRegimeTipo").value;
+      document.getElementById("grpAfastCustom").style.display = (tipo === "CUSTOM") ? "flex" : "none";
+    }
+
+    function ehMesmaFuncaoExata(funcaoAfastado, funcaoColega) {
+      const fAf = funcaoAfastado.toLowerCase();
+      const fCol = funcaoColega.toLowerCase();
+
+      const afEhCondutor = fAf.includes("condutor");
+      const colEhCondutor = fCol.includes("condutor");
+
+      if (afEhCondutor) return colEhCondutor;
+
+      const afEhTecnico = fAf.includes("técnic") || fAf.includes("enfermeir");
+      const colEhTecnico = fCol.includes("técnic") || fCol.includes("enfermeir");
+
+      if (afEhTecnico) return colEhTecnico && !colEhCondutor;
+
+      return false;
+    }
+
+    function gerarGradeSubstitutosDia() {
+      const nomeServidor = document.getElementById("afastServidor").value;
+      const inicioStr = document.getElementById("afastInicio").value;
+      const fimStr = document.getElementById("afastFim").value;
+      const container = document.getElementById("containerGradeDias");
+      const dataBaseStr = document.getElementById("escalaDataBase") ? document.getElementById("escalaDataBase").value : "2026-09-01";
+      
+      if (!nomeServidor || !inicioStr || !fimStr || !container) return;
+
+      container.innerHTML = "";
+
+      const servidorObj = colaboradores.find(c => c.nome === nomeServidor);
+      if (!servidorObj) return;
+
+      const dataBase = new Date(dataBaseStr + "T00:00:00");
+      const dtIni = new Date(inicioStr + "T00:00:00");
+      const dtFim = new Date(fimStr + "T00:00:00");
+
+      if (dtFim < dtIni) return;
+
+      const colegasMesmaFuncao = colaboradores.filter(c => c.nome !== nomeServidor && ehMesmaFuncaoExata(servidorObj.funcao, c.funcao));
+
+      let cur = new Date(dtIni);
+      let plantoesEncontrados = 0;
+
+      while (cur <= dtFim) {
+        const dtIso = cur.toISOString().split("T")[0];
+        const dtFmt = `${String(cur.getDate()).padStart(2,'0')}/${String(cur.getMonth()+1).padStart(2,'0')}/${cur.getFullYear()}`;
+
+        const diffTime = cur.getTime() - dataBase.getTime();
+        const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+        const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+        const eqOriginal = duplasPadrao[eqIndex];
+
+        const ehCondutorEPlantao = (servidorObj.funcao.toLowerCase().includes("condutor") && eqOriginal.cond === servidorObj.nome);
+        const ehTecnicoEPlantao = (!servidorObj.funcao.toLowerCase().includes("condutor") && eqOriginal.tec === servidorObj.nome);
+
+        if (ehCondutorEPlantao || ehTecnicoEPlantao) {
+          plantoesEncontrados++;
+
+          let optionsHtml = `<option value="A DEFINIR">-- A DEFINIR --</option>`;
+          colegasMesmaFuncao.forEach(c => {
+            optionsHtml += `<option value="${c.nome}">${c.nome}</option>`;
+          });
+
+          container.innerHTML += `
+            <div style="background:#fff; padding:10px; border:1px solid #cbd5e1; border-radius:5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <label style="font-size:11px; color:#b71c1c; font-weight:bold;">Plantão Real #${plantoesEncontrados} (${dtFmt}):</label>
+              <div style="font-size:10px; color:#0284c7; margin-bottom:4px; font-weight:bold;">Categoria Exclusiva: ${servidorObj.funcao.includes("Condutor") ? 'CONDUTORES' : 'TÉCNICOS DE ENFERMAGEM'}</div>
+              <select class="sel-subst-dia" data-data="${dtIso}" style="width:100%;">
+                ${optionsHtml}
+              </select>
+            </div>
+          `;
+        }
+
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      if (plantoesEncontrados === 0) {
+        container.innerHTML = `<span style="font-size:11px; color:#dc2626; font-weight:bold;">Nenhum plantão real do servidor cai neste intervalo de datas.</span>`;
+      }
+    }
+
+    async function salvarAfastamento(e) {
+      e.preventDefault();
+      const idEdit = document.getElementById("afastId").value;
+      const nomeServidor = document.getElementById("afastServidor").value;
+      const tipoReg = document.getElementById("afastRegimeTipo").value;
+      let regNome = tipoReg;
+
+      if (tipoReg === "CUSTOM") {
+        const ht = document.getElementById("afastHorasTrab").value || 24;
+        const hf = document.getElementById("afastHorasFolga").value || 48;
+        regNome = `${ht}x${hf} (Personalizado)`;
+      }
+
+      const servidorObj = colaboradores.find(c => c.nome === nomeServidor);
+
+      const subsPorDia = {};
+      const elSelects = document.querySelectorAll(".sel-subst-dia");
+      elSelects.forEach(sel => {
+        subsPorDia[sel.getAttribute("data-data")] = sel.value;
+      });
+
+      if (idEdit) {
+        const idx = afastamentos.findIndex(a => a.id == idEdit);
+        if (idx !== -1) {
+          afastamentos[idx].servidor = nomeServidor;
+          afastamentos[idx].funcao = servidorObj ? servidorObj.funcao : "—";
+          afastamentos[idx].inicio = document.getElementById("afastInicio").value;
+          afastamentos[idx].fim = document.getElementById("afastFim").value;
+          afastamentos[idx].regime = regNome;
+          afastamentos[idx].substitutosDiarios = subsPorDia;
+          afastamentos[idx].obs = document.getElementById("afastObs").value;
+        }
+        alert("Licença e substitutos diários atualizados!");
+      } else {
+        const novo = {
+          id: Date.now(),
+          servidor: nomeServidor,
+          funcao: servidorObj ? servidorObj.funcao : "—",
+          inicio: document.getElementById("afastInicio").value,
+          fim: document.getElementById("afastFim").value,
+          regime: regNome,
+          substitutosDiarios: subsPorDia,
+          obs: document.getElementById("afastObs").value
+        };
+        afastamentos.push(novo);
+        alert("Licença e substitutos gravados!");
+      }
+
+      await salvarAfastamentosStorage();
+      cancelarEdicaoAfastamento();
+      renderizarTabelaAfastamentos();
+      renderizarEscalas();
+    }
+
+    function editarAfastamento(id) {
+      const a = afastamentos.find(item => item.id == id);
+      if (a) {
+        document.getElementById("afastId").value = a.id;
+        document.getElementById("afastServidor").value = a.servidor;
+        document.getElementById("afastInicio").value = a.inicio;
+        document.getElementById("afastFim").value = a.fim;
+        document.getElementById("afastObs").value = a.obs;
+
+        gerarGradeSubstitutosDia();
+
+        if (a.substitutosDiarios) {
+          setTimeout(() => {
+            const elSelects = document.querySelectorAll(".sel-subst-dia");
+            elSelects.forEach(sel => {
+              const dt = sel.getAttribute("data-data");
+              if (a.substitutosDiarios[dt]) sel.value = a.substitutosDiarios[dt];
+            });
+          }, 100);
+        }
+
+        document.getElementById("tituloFormAfastamento").innerText = `Editando Licença: ${a.servidor}`;
+        document.getElementById("btnSalvarAfastamento").innerText = "💾 Salvar Alterações na Nuvem";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function cancelarEdicaoAfastamento() {
+      document.getElementById("afastId").value = "";
+      document.getElementById("formAfastamento").reset();
+      document.getElementById("containerGradeDias").innerHTML = `<span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar os plantões reais.</span>`;
+      document.getElementById("tituloFormAfastamento").innerText = "Registrar Licença e Cobertura Diária por Função";
+      document.getElementById("btnSalvarAfastamento").innerText = "🏥 Salvar Licença na Nuvem";
+    }
+
+    async function excluirAfastamento(id) {
+      if (confirm("Confirma a remoção desta licença?")) {
+        afastamentos = afastamentos.filter(a => a.id !== id);
+        if (dbNuvem) await dbNuvem.from('afastamentos').delete().eq('id', id);
+        await salvarAfastamentosStorage();
+        renderizarTabelaAfastamentos();
+        renderizarEscalas();
+      }
+    }
+
+    function renderizarTabelaAfastamentos() {
+      const tb = document.getElementById("tbAfastamentos");
+      if (!tb) return;
+      tb.innerHTML = "";
+      afastamentos.forEach(a => {
+        let resumoSubs = "";
+        if (a.substitutosDiarios && Object.keys(a.substitutosDiarios).length > 0) {
+          resumoSubs = Object.entries(a.substitutosDiarios).map(([dt, sub]) => {
+            const dtFmt = dt.split('-').reverse().slice(0,2).join('/');
+            return `<div><b>Plantão ${dtFmt}:</b> ${sub === 'A DEFINIR' ? '<span style="color:#dc2626;">A DEFINIR</span>' : '<span style="color:#16a34a; font-weight:bold;">'+sub+'</span>'}</div>`;
+          }).join("");
+        } else {
+          resumoSubs = "Sem substitutos em plantão real";
+        }
+
+        tb.innerHTML += `
+          <tr>
+            <td style="text-align:left;"><b>${a.servidor}</b></td>
+            <td>${a.funcao || '—'}</td>
+            <td>De ${a.inicio.split('-').reverse().join('/')} até ${a.fim.split('-').reverse().join('/')}</td>
+            <td><b style="color:#0284c7;">${a.regime}</b></td>
+            <td style="text-align:left; font-size:10px;">${resumoSubs}</td>
+            <td style="text-align:left;">${a.obs}</td>
+            <td>
+              <button class="btn btn-info" onclick="editarAfastamento(${a.id})">✏️ Editar Plantões</button>
+              <button class="btn btn-danger" onclick="excluirAfastamento(${a.id})">Remover</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function toggleRegimeCustomGerador(val) {
+      document.getElementById("grpGeradorCustom").style.display = (val === 'CUSTOM') ? 'flex' : 'none';
+      alterarRegimeVisual(val);
+    }
+
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
+    function toggleTipoTroca() {
+      const tipo = document.getElementById("trocaTipo").value;
+      const campoDev = document.getElementById("trocaDataDevolucao");
+
+      if (tipo === "Direta") {
+        campoDev.disabled = false;
+        campoDev.required = true;
+      } else {
+        campoDev.value = "";
+        campoDev.disabled = true;
+        campoDev.required = false;
+      }
+    }
+
+    async function solicitarTroca(e) {
+      e.preventDefault();
+      const idEdit = document.getElementById("trocaIdEdit").value;
+      const tipo = document.getElementById("trocaTipo").value;
+      const dataDev = document.getElementById("trocaDataDevolucao").value;
+
+      if (tipo === "Direta" && !dataDev) {
+        alert("A data de devolução é obrigatória em trocas por troca!");
+        return;
+      }
+
+      if (idEdit) {
+        const idx = trocas.findIndex(t => t.id == idEdit);
+        if (idx !== -1 && trocas[idx].status === "PENDENTE") {
+          trocas[idx].dataMinha = document.getElementById("trocaDataMinha").value;
+          trocas[idx].substituto = document.getElementById("trocaSubstituto").value;
+          trocas[idx].tipo = tipo;
+          trocas[idx].dataDevolucao = dataDev || "A HAVER";
+          trocas[idx].motivo = document.getElementById("trocaMotivo").value;
+          alert("Solicitação de troca atualizada!");
+        }
+      } else {
+        const novaTroca = {
+          id: Math.floor(Math.random() * 9000) + 1000,
+          solicitante: "Daniel Alexandre Fernandes",
+          dataMinha: document.getElementById("trocaDataMinha").value,
+          substituto: document.getElementById("trocaSubstituto").value,
+          tipo: tipo,
+          dataDevolucao: dataDev || "A HAVER",
+          motivo: document.getElementById("trocaMotivo").value,
+          status: "PENDENTE"
+        };
+        trocas.push(novaTroca);
+        alert("Solicitação enviada para a nuvem com sucesso!");
+      }
+
+      await salvarTrocasStorage();
+      cancelarEdicaoTroca();
+      renderizarTabelaTrocas();
+      renderizarAdminTrocas();
+      renderizarEscalas();
+    }
+
+    function editarTrocaSolicitante(id) {
+      const t = trocas.find(item => item.id == id);
+      if (t && t.status === "PENDENTE") {
+        document.getElementById("trocaIdEdit").value = t.id;
+        document.getElementById("trocaDataMinha").value = t.dataMinha;
+        document.getElementById("trocaSubstituto").value = t.substituto;
+        document.getElementById("trocaTipo").value = t.tipo;
+        toggleTipoTroca();
+        if (t.tipo === "Direta") document.getElementById("trocaDataDevolucao").value = t.dataDevolucao;
+        document.getElementById("trocaMotivo").value = t.motivo;
+
+        document.getElementById("tituloFormTroca").innerText = `Editando Solicitação de Troca #${t.id}`;
+        document.getElementById("btnSalvarTroca").innerText = "💾 Salvar Alterações da Troca";
+        document.getElementById("btnCancelarTroca").style.display = "inline-flex";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function cancelarEdicaoTroca() {
+      document.getElementById("trocaIdEdit").value = "";
+      document.getElementById("formTroca").reset();
+      toggleTipoTroca();
+      document.getElementById("tituloFormTroca").innerText = "Solicitar / Editar Troca de Plantão";
+      document.getElementById("btnSalvarTroca").innerText = "📩 Enviar Solicitação para a Nuvem";
+      document.getElementById("btnCancelarTroca").style.display = "none";
+    }
+
+    async function responderTroca(id, aprovar) {
+      const t = trocas.find(item => item.id === id);
+      if (t) {
+        t.status = aprovar ? "APROVADO" : "RECUSADO";
+        await salvarTrocasStorage();
+        renderizarTabelaTrocas();
+        renderizarAdminTrocas();
+        renderizarEscalas();
+      }
+    }
+
+    function renderizarTabelaTrocas() {
+      const tb = document.getElementById("tbTrocas");
+      if (!tb) return;
+      tb.innerHTML = "";
+      trocas.forEach(t => {
+        let stBadge = `<span class="badge badge-pendente">Pendente</span>`;
+        if (t.status === "APROVADO") stBadge = `<span class="badge badge-aprovado">Aprovado</span>`;
+        if (t.status === "RECUSADO") stBadge = `<span class="badge badge-recusado">Recusado</span>`;
+        if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
+
+        let acoes = "-";
+        if (t.status === "PENDENTE") {
+          acoes = `
+            <button class="btn btn-info" onclick="editarTrocaSolicitante(${t.id})">✏️ Editar</button>
+            <button class="btn btn-success" onclick="responderTroca(${t.id}, true)">Aceitar</button>
+            <button class="btn btn-danger" onclick="responderTroca(${t.id}, false)">Recusar</button>
+          `;
+        }
+
+        tb.innerHTML += `
+          <tr>
+            <td>#${t.id}</td>
+            <td style="text-align:left;">${t.solicitante}</td>
+            <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td style="text-align:left;">${t.substituto}</td>
+            <td>${t.tipo}</td>
+            <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
+            <td style="text-align:left;">${t.motivo}</td>
+            <td>${stBadge}</td>
+            <td>${acoes}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // PAINEL ADMINISTRADOR
+    async function adminCancelarTroca(id) {
+      const t = trocas.find(item => item.id === id);
+      if (t) {
+        const justificativa = prompt(`Informe a justificativa administrativa para cancelar a troca #${id}:`);
+        if (justificativa && justificativa.trim() !== "") {
+          t.status = "CANCELADO";
+          t.motivo += ` | [CANCELADO ADMIN]: ${justificativa.trim()}`;
+          await salvarTrocasStorage();
+          renderizarTabelaTrocas();
+          renderizarAdminTrocas();
+          renderizarEscalas();
+          alert("Troca cancelada com sucesso!");
+        }
+      }
+    }
+
+    async function adminEditarTroca(id) {
+      const t = trocas.find(item => item.id === id);
+      if (t) {
+        const novaDataMinha = prompt("Nova Data do Plantão (AAAA-MM-DD):", t.dataMinha);
+        const novaDataDev = prompt("Nova Data de Devolução (AAAA-MM-DD ou A HAVER):", t.dataDevolucao);
+        
+        if (novaDataMinha) {
+          t.dataMinha = novaDataMinha;
+          if (novaDataDev) t.dataDevolucao = novaDataDev;
+          await salvarTrocasStorage();
+          renderizarTabelaTrocas();
+          renderizarAdminTrocas();
+          renderizarEscalas();
+          alert("Troca reajustada pelo Administrador!");
+        }
+      }
+    }
+
+    function renderizarAdminTrocas() {
+      const tb = document.getElementById("tbAdminTrocas");
+      if (!tb) return;
+      tb.innerHTML = "";
+      trocas.forEach(t => {
+        let stBadge = `<span class="badge badge-pendente">Pendente</span>`;
+        if (t.status === "APROVADO") stBadge = `<span class="badge badge-aprovado">Aprovado</span>`;
+        if (t.status === "RECUSADO") stBadge = `<span class="badge badge-recusado">Recusado</span>`;
+        if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
+
+        tb.innerHTML += `
+          <tr>
+            <td>#${t.id}</td>
+            <td style="text-align:left;">${t.solicitante}</td>
+            <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td style="text-align:left;">${t.substituto}</td>
+            <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
+            <td>${stBadge}</td>
+            <td style="text-align:left;">${t.motivo}</td>
+            <td>
+              <button class="btn btn-info" onclick="adminEditarTroca(${t.id})">✏️ Reajustar Datas</button>
+              <button class="btn btn-danger" onclick="adminCancelarTroca(${t.id})">🛑 Cancelar / Suspender</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // MOTOR DE ESCALAS INTEGRADO
+    function renderizarEscalas() {
+      const mesAno = document.getElementById("escalaMesAno").value;
+      const dataBaseStr = document.getElementById("escalaDataBase").value;
+      let regimePadrao = document.getElementById("escalaRegime").value;
+
+      if (!mesAno || !dataBaseStr) return;
+
+      const [ano, mes] = mesAno.split("-").map(Number);
+      const dataBase = new Date(dataBaseStr + "T00:00:00");
+
+      const mesesNomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+      const elImp = document.getElementById("tituloEscalaImpressao");
+      if (elImp) elImp.innerText = `ESCALA OPERACIONAL MENSAL (${regimePadrao.toUpperCase()}) — ${mesesNomes[mes - 1]} DE ${ano}`;
+
+      const head = document.getElementById("headTblGerada");
+      const body = document.getElementById("bodyTblGerada");
+      if (!head || !body) return;
+
+      head.innerHTML = "";
+      body.innerHTML = "";
+
+      const diasNoMes = new Date(ano, mes, 0).getDate();
+      const diasSemana = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
+
+      if (regimePadrao !== "40h" && regimePadrao !== "coren") {
+        head.innerHTML = `<tr><th>DIA</th><th>SEMANA</th><th>PERÍODO</th><th>CONDUTOR SOCORRISTA</th><th>TÉCNICO DE ENFERMAGEM</th><th>OBSERVAÇÕES / ALTERAÇÕES</th></tr>`;
+        
+        for (let d = 1; d <= diasNoMes; d++) {
+          const dtAtual = new Date(ano, mes - 1, d);
+          const dtFmt = `${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+          const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const fds = (dtAtual.getDay() === 0 || dtAtual.getDay() === 6);
+
+          const diffTime = dtAtual.getTime() - dataBase.getTime();
+          const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+
+          const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+          const eqOriginal = duplasPadrao[eqIndex];
+
+          let cond = eqOriginal.cond;
+          let tec = eqOriginal.tec;
+          let obs = "-";
+
+          if (diasCorridos < 0) {
+            cond = "FORA DA SEQUÊNCIA";
+            tec = "FORA DA SEQUÊNCIA";
+            obs = "Data anterior à Data-Base";
+          } else {
+            afastamentos.forEach(atestado => {
+              if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
+                const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
+
+                if (cond === atestado.servidor) {
+                  if (substDia && substDia !== "A DEFINIR") {
+                    cond = `${substDia} (Subst.)`;
+                    obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
+                  } else {
+                    cond = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
+                    obs = `<span style="color:#dc2626; font-weight:bold;">Atestado: ${atestado.servidor}</span>`;
+                  }
+                }
+
+                if (tec === atestado.servidor) {
+                  if (substDia && substDia !== "A DEFINIR") {
+                    tec = `${substDia} (Subst.)`;
+                    obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
+                  } else {
+                    tec = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
+                    obs = `<span style="color:#dc2626; font-weight:bold;">Atestado: ${atestado.servidor}</span>`;
+                  }
+                }
+              }
+            });
+
+            const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && t.status === "APROVADO");
+            if (trocaAprovada) {
+              if (trocaAprovada.dataMinha === dtIso) {
+                cond = `${trocaAprovada.substituto} (Subst.)`;
+                obs = `<span style="color:#d97706; font-weight:bold;">Troca Aprovada (#${trocaAprovada.id})</span>`;
+              } else if (trocaAprovada.dataDevolucao === dtIso) {
+                cond = `${trocaAprovada.solicitante} (Devoluç.)`;
+                obs = `<span style="color:#16a34a; font-weight:bold;">Devolução de Troca (#${trocaAprovada.id})</span>`;
+              }
+            }
+          }
+
+          body.innerHTML += `
+            <tr class="${fds ? 'col-fds' : ''}">
+              <td><b>${dtFmt}</b></td>
+              <td>${diasSemana[dtAtual.getDay()]}</td>
+              <td>07h às 07h</td>
+              <td><b>${cond}</b></td>
+              <td><b>${tec}</b></td>
+              <td>${obs}</td>
+            </tr>
+          `;
+        }
+      } else if (regimePadrao === "40h") {
+        head.innerHTML = `<tr><th>DIA</th><th>SEMANA</th><th>PERÍODO</th><th>SERVIDORES 40H</th><th>OBSERVAÇÕES</th></tr>`;
+        for (let d = 1; d <= diasNoMes; d++) {
+          const dt = new Date(ano, mes - 1, d);
+          const dtFmt = `${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+          const fds = (dt.getDay() === 0 || dt.getDay() === 6);
+
+          body.innerHTML += `
+            <tr class="${fds ? 'col-fds' : ''}">
+              <td><b>${dtFmt}</b></td>
+              <td>${diasSemana[dt.getDay()]}</td>
+              <td>${fds ? 'FOLGA' : '08h às 17h'}</td>
+              <td><b>${fds ? '—' : 'EQUIPE ADMINISTRATIVA / ENFERMAGEM'}</b></td>
+              <td>-</td>
+            </tr>
+          `;
+        }
+      } else if (regimePadrao === "coren") {
+        let headHtml = `<tr><th style="width:18%;">NOME COMPLETO</th><th style="width:8%;">REGISTRO</th><th style="width:10%;">FUNÇÃO</th>`;
+        for (let d = 1; d <= diasNoMes; d++) headHtml += `<th>${String(d).padStart(2,'0')}</th>`;
+        headHtml += `</tr>`;
+        head.innerHTML = headHtml;
+
+        ordenarAlfabeticamente();
+
+        colaboradores.forEach(c => {
+          let regExibido = c.coren !== "N/A" ? c.coren : c.cnh;
+          let line = `<tr><td style="text-align:left;"><b>${c.nome}</b></td><td>${regExibido}</td><td>${c.funcao}</td>`;
+          
+          for (let d = 1; d <= diasNoMes; d++) {
+            const dtAtual = new Date(ano, mes - 1, d);
+            const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const fdsClass = (dtAtual.getDay() === 0 || dtAtual.getDay() === 6) ? "col-fds" : "";
+            
+            const diffTime = dtAtual.getTime() - dataBase.getTime();
+            const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+
+            const atestado = afastamentos.find(a => a.servidor === c.nome && dtIso >= a.inicio && dtIso <= a.fim);
+
+            if (atestado) {
+              line += `<td style="background-color:#fee2e2; color:#b91c1c; font-weight:bold;">ATEST</td>`;
+            } else {
+              const idDupla = c.idDupla !== undefined ? c.idDupla : (c.id % 5);
+              const eqDia = ((diasCorridos % 5) + 5) % 5;
+              const ehPlantao = (eqDia === idDupla);
+              line += `<td class="${ehPlantao ? 'st-i' : 'st-fol'} ${fdsClass}">${ehPlantao ? 'I' : 'FOL'}</td>`;
+            }
+          }
+          line += `</tr>`;
+          body.innerHTML += line;
+        });
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
