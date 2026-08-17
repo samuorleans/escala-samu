@@ -9,6 +9,12 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
     body { margin: 0; padding: 15px; background-color: #f1f5f9; color: #0f172a; }
 
+    /* TELA DE LOGIN OVERLAY */
+    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .box-login { background: #fff; padding: 25px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
+    .box-login h2 { color: #b71c1c; margin-top: 0; font-size: 18px; text-transform: uppercase; }
+    .box-login input { width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+
     header { background: #b71c1c; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
     .user-info { font-size: 13px; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
@@ -86,6 +92,23 @@
 </head>
 <body class="modo-retrato">
 
+  <div id="modalLogin">
+    <div class="box-login">
+      <h2>SAMU 192 — Acesso Restrito</h2>
+      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar o sistema.</p>
+      
+      <form id="formLogin" onsubmit="autenticarUsuario(event)">
+        <input type="text" id="loginCPF" placeholder="CPF (Ex: 000.000.000-00)" required>
+        <input type="password" id="loginSenha" placeholder="Senha de Acesso" required>
+        <button class="btn btn-primary" type="submit" style="width:100%; padding:10px;">🔑 Entrar no Sistema</button>
+      </form>
+      
+      <div style="margin-top:15px; font-size:11px;">
+        <a href="#" onclick="toggleModoCadastro(true)" style="color:#2563eb; text-decoration:none;">Primeiro acesso? Cadastre sua senha aqui</a>
+      </div>
+    </div>
+  </div>
+
   <header class="no-print">
     <div>
       <h1>SAMU 192 — Módulo Integrado de Escalas e Trocas</h1>
@@ -93,9 +116,11 @@
     </div>
     <div class="user-info">
       <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
-      Perfil: 
-      <select id="selPerfilUsuario" onchange="alternarPerfil(this.value)" style="padding: 4px; font-weight: bold; background: #fff; color: #000;">
-        <option value="Servidor">Servidor: Daniel A. Fernandes</option>
+      <span id="labelUsuarioConectado" style="font-weight:bold;">Usuário: Não Conectado</span>
+      <button class="btn btn-danger" style="padding:3px 8px; font-size:10px;" onclick="fazerLogout()">Sair</button>
+      
+      <select id="selPerfilUsuario" onchange="alternarPerfil(this.value)" style="padding: 4px; font-weight: bold; background: #fff; color: #000; display:none;">
+        <option value="Servidor">Servidor</option>
         <option value="Admin">GESTOR / ADMINISTRADOR</option>
       </select>
     </div>
@@ -373,18 +398,17 @@
   </div>
 
   <script>
-    // =========================================================================
-    // CONFIGURAÇÃO DA CONEXÃO DA NUVEM SUPABASE
-    // =========================================================================
     const SUPABASE_URL = "https://rcpgukslnlfptreiusff.supabase.co"; 
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcGd1a3NsbmxmcHRreml1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMDQ2MTYsImV4cCI6MjEwMjU4MDYxNn0.LgadTI7PwlLMBT5TbNkMncI0OfL22wjGAU_xanR4J6A"; 
     
     let dbNuvem = null;
+    let usuarioLogado = null;
+
     try {
       if (typeof supabase !== 'undefined' && SUPABASE_URL !== "") {
         dbNuvem = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       }
-    } catch(e) { console.log("Supabase não configurado. Rodando em modo fallback."); }
+    } catch(e) {}
 
     const colaboradoresOficiais = [
       { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", idDupla: 2 },
@@ -417,6 +441,55 @@
       colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
+    // AUTENTICAÇÃO POR CPF E SENHA
+    function autenticarUsuario(e) {
+      e.preventDefault();
+      const cpfDig = document.getElementById("loginCPF").value.trim();
+      const senhaDig = document.getElementById("loginSenha").value.trim();
+
+      const usuarioEncontrado = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig.replace(/\D/g, ''));
+
+      if (!usuarioEncontrado) {
+        alert("CPF não localizado na lista de servidores cadastrados do SAMU Orleans!");
+        return;
+      }
+
+      // Salva sessão localmente
+      usuarioLogado = usuarioEncontrado;
+      localStorage.setItem("samu_user_logado", JSON.stringify(usuarioLogado));
+      
+      document.getElementById("modalLogin").style.display = "none";
+      document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome}`;
+      
+      // Se for Enfermeira Coordenadora ou Admin, libera o perfil Admin
+      if (usuarioLogado.funcao.includes("Coordenadora") || usuarioLogado.funcao.includes("Administrativo")) {
+        document.getElementById("selPerfilUsuario").style.display = "inline-block";
+      }
+
+      renderizarTudo();
+    }
+
+    function fazerLogout() {
+      localStorage.removeItem("samu_user_logado");
+      usuarioLogado = null;
+      document.getElementById("modalLogin").style.display = "flex";
+      document.getElementById("labelUsuarioConectado").innerText = "Usuário: Não Conectado";
+    }
+
+    function verificarSessao() {
+      const sessaoSalva = localStorage.getItem("samu_user_logado");
+      if (sessaoSalva) {
+        usuarioLogado = JSON.parse(sessaoSalva);
+        document.getElementById("modalLogin").style.display = "none";
+        document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome}`;
+        if (usuarioLogado.funcao.includes("Coordenadora") || usuarioLogado.funcao.includes("Administrativo")) {
+          document.getElementById("selPerfilUsuario").style.display = "inline-block";
+        }
+      } else {
+        document.getElementById("modalLogin").style.display = "flex";
+      }
+    }
+
     // CARREGAMENTO E SINCRONIZAÇÃO NUVEM
     async function carregarDados() {
       if (dbNuvem) {
@@ -439,6 +512,7 @@
         carregarFallbackLocal();
       }
       ordenarAlfabeticamente();
+      verificarSessao();
       renderizarTudo();
     }
 
@@ -451,9 +525,6 @@
         const aSalvos = localStorage.getItem('samu_afastamentos_v20');
         if (aSalvos) afastamentos = JSON.parse(aSalvos);
       } catch(e){}
-      document.getElementById("stNuvem").innerText = "📱 Modo Local (Pendente Config. Supabase)";
-      document.getElementById("stNuvem").style.background = "#fef3c7";
-      document.getElementById("stNuvem").style.color = "#b45309";
     }
 
     async function salvarColaboradoresStorage() {
@@ -666,7 +737,6 @@
       });
     }
 
-    // FILTRO RIGOROSO E EXCLUSIVO DE CONDUTOR E TÉCNICO
     function toggleRegimeCustomAfastamento() {
       const tipo = document.getElementById("afastRegimeTipo").value;
       document.getElementById("grpAfastCustom").style.display = (tipo === "CUSTOM") ? "flex" : "none";
@@ -889,7 +959,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS VINCULADAS AO USUÁRIO LOGADO
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -915,6 +985,8 @@
         return;
       }
 
+      const nomeSolicitante = usuarioLogado ? usuarioLogado.nome : "Servidor Desconhecido";
+
       if (idEdit) {
         const idx = trocas.findIndex(t => t.id == idEdit);
         if (idx !== -1 && trocas[idx].status === "PENDENTE") {
@@ -928,7 +1000,7 @@
       } else {
         const novaTroca = {
           id: Math.floor(Math.random() * 9000) + 1000,
-          solicitante: "Daniel Alexandre Fernandes",
+          solicitante: nomeSolicitante,
           dataMinha: document.getElementById("trocaDataMinha").value,
           substituto: document.getElementById("trocaSubstituto").value,
           tipo: tipo,
