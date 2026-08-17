@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema Integrado de Gestão de Escalas e Trocas — SAMU 192</title>
+  <!-- BIBLIOTECA OFICIAL DO SUPABASE (NUVEM) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
     body { margin: 0; padding: 15px; background-color: #f1f5f9; color: #0f172a; }
 
     /* TELA DE LOGIN OVERLAY */
-    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.88); display: flex; align-items: center; justify-content: center; z-index: 9999; }
     .box-login { background: #fff; padding: 25px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
     .box-login h2 { color: #b71c1c; margin-top: 0; font-size: 18px; text-transform: uppercase; }
     .box-login input { width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
@@ -92,6 +93,7 @@
 </head>
 <body class="modo-retrato">
 
+  <!-- MODAL DE LOGIN POR CPF E SENHA -->
   <div id="modalLogin">
     <div class="box-login">
       <h2>SAMU 192 — Acesso Restrito</h2>
@@ -103,8 +105,8 @@
         <button class="btn btn-primary" type="submit" style="width:100%; padding:10px;">🔑 Entrar no Sistema</button>
       </form>
       
-      <div style="margin-top:15px; font-size:11px;">
-        <a href="#" onclick="toggleModoCadastro(true)" style="color:#2563eb; text-decoration:none;">Primeiro acesso? Cadastre sua senha aqui</a>
+      <div style="margin-top:12px; font-size:11px; color:#64748b;">
+        Dúvidas de acesso? Contate a Coordenação USB 011.
       </div>
     </div>
   </div>
@@ -118,23 +120,19 @@
       <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
       <span id="labelUsuarioConectado" style="font-weight:bold;">Usuário: Não Conectado</span>
       <button class="btn btn-danger" style="padding:3px 8px; font-size:10px;" onclick="fazerLogout()">Sair</button>
-      
-      <select id="selPerfilUsuario" onchange="alternarPerfil(this.value)" style="padding: 4px; font-weight: bold; background: #fff; color: #000; display:none;">
-        <option value="Servidor">Servidor</option>
-        <option value="Admin">GESTOR / ADMINISTRADOR</option>
-      </select>
     </div>
   </header>
 
   <div class="nav-tabs no-print">
-    <button class="tab-btn active" onclick="trocarAba('colaboradores')">👥 Colaboradores</button>
-    <button class="tab-btn" onclick="trocarAba('afastamentos')">🏥 Licenças e Escala Temporária</button>
-    <button class="tab-btn" onclick="trocarAba('escalas')">📅 Gerador de Escalas</button>
-    <button class="tab-btn" onclick="trocarAba('trocas')">🔄 Trocas de Plantão</button>
+    <button class="tab-btn" id="btnTabColaboradores" style="display:none;" onclick="trocarAba('colaboradores')">👥 Colaboradores</button>
+    <button class="tab-btn" id="btnTabAfastamentos" style="display:none;" onclick="trocarAba('afastamentos')">🏥 Licenças e Escala Temporária</button>
+    <button class="tab-btn active" id="btnTabEscalas" onclick="trocarAba('escalas')">📅 Gerador de Escalas</button>
+    <button class="tab-btn" id="btnTabTrocas" onclick="trocarAba('trocas')">🔄 Trocas de Plantão</button>
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <div id="abaColaboradores" class="card">
+  <!-- ABA 1: CADASTRO DE COLABORADORES (EXCLUSIVO COORDENADOR / MASTER) -->
+  <div id="abaColaboradores" class="card" style="display:none;">
     <h3 id="tituloFormColaborador">Cadastrar / Editar Colaborador</h3>
     <form id="formColaborador" onsubmit="salvarColaborador(event)">
       <input type="hidden" id="cadId">
@@ -148,12 +146,12 @@
           <input type="text" id="cadCPF" required placeholder="000.000.000-00">
         </div>
         <div class="form-group">
-          <label>Função</label>
+          <label>Função / Perfil</label>
           <select id="cadFuncao" required>
             <option value="Condutor Socorrista">Condutor Socorrista</option>
             <option value="Técnico(a) de Enfermagem Socorrista">Técnico(a) de Enfermagem Socorrista</option>
-            <option value="Enfermeira Coordenadora">Enfermeira Coordenadora</option>
-            <option value="Administrativo">Administrativo</option>
+            <option value="Enfermeira Coordenadora">Enfermeira Coordenadora (Acesso Total)</option>
+            <option value="Administrativo / Master">Administrativo / Master (Acesso Total)</option>
           </select>
         </div>
         <div class="form-group">
@@ -198,6 +196,7 @@
     </div>
   </div>
 
+  <!-- ABA 2: LICENÇAS E COBERTURA DIÁRIA (EXCLUSIVO COORDENADOR / MASTER) -->
   <div id="abaAfastamentos" class="card" style="display:none;">
     <h3 id="tituloFormAfastamento">Registrar Licença e Cobertura Diária por Função</h3>
     <form id="formAfastamento" onsubmit="salvarAfastamento(event)">
@@ -269,7 +268,8 @@
     </div>
   </div>
 
-  <div id="abaEscalas" class="card" style="display:none;">
+  <!-- ABA 3: GERADOR DE ESCALAS (DISPONÍVEL PARA TODOS) -->
+  <div id="abaEscalas" class="card">
     <div class="grid-form no-print">
       <div class="form-group">
         <label>Mês / Ano da Escala</label>
@@ -320,6 +320,7 @@
     </div>
   </div>
 
+  <!-- ABA 4: TROCAS DE PLANTÃO (SOLICITAÇÃO PARA TODOS / ACEITE DO SUBSTITUTO) -->
   <div id="abaTrocas" class="card" style="display:none;">
     <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
     <form id="formTroca" onsubmit="solicitarTroca(event)">
@@ -374,9 +375,10 @@
     </div>
   </div>
 
+  <!-- ABA 5: PAINEL ADMINISTRADOR (EXCLUSIVO COORDENADOR / MASTER) -->
   <div id="abaAdmin" class="card" style="display:none;">
     <h3>⚙️ Gestão Administrativa, Cancelamento e Auditoria de Trocas</h3>
-    <p style="font-size: 12px; color: #475569;">Como Administrador, você pode alterar datas, substituir nomes ou cancelar/suspender trocas já aprovadas mediante justificativa.</p>
+    <p style="font-size: 12px; color: #475569;">Como Administrador / Coordenador, você pode alterar datas, substituir nomes ou cancelar/suspender trocas já aprovadas mediante justificativa.</p>
 
     <div class="table-responsive" style="margin-top: 15px;">
       <table>
@@ -435,38 +437,47 @@
     let colaboradores = [];
     let trocas = [];
     let afastamentos = [];
-    let perfilAtual = "Servidor";
 
     function ordenarAlfabeticamente() {
       colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
-    // AUTENTICAÇÃO POR CPF E SENHA
+    // AUTENTICAÇÃO POR CPF E CONTROLE DE NÍVEL DE ACESSO
     function autenticarUsuario(e) {
       e.preventDefault();
-      const cpfDig = document.getElementById("loginCPF").value.trim();
+      const cpfDig = document.getElementById("loginCPF").value.trim().replace(/\D/g, '');
       const senhaDig = document.getElementById("loginSenha").value.trim();
 
-      const usuarioEncontrado = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig.replace(/\D/g, ''));
+      const usuarioEncontrado = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig);
 
       if (!usuarioEncontrado) {
-        alert("CPF não localizado na lista de servidores cadastrados do SAMU Orleans!");
+        alert("CPF não localizado na lista oficial do SAMU Orleans!");
         return;
       }
 
-      // Salva sessão localmente
       usuarioLogado = usuarioEncontrado;
       localStorage.setItem("samu_user_logado", JSON.stringify(usuarioLogado));
       
       document.getElementById("modalLogin").style.display = "none";
-      document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome}`;
+      document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome} (${usuarioLogado.funcao})`;
       
-      // Se for Enfermeira Coordenadora ou Admin, libera o perfil Admin
-      if (usuarioLogado.funcao.includes("Coordenadora") || usuarioLogado.funcao.includes("Administrativo")) {
-        document.getElementById("selPerfilUsuario").style.display = "inline-block";
-      }
-
+      aplicarPermissoes();
       renderizarTudo();
+    }
+
+    function aplicarPermissoes() {
+      if (!usuarioLogado) return;
+
+      const f = usuarioLogado.funcao.toLowerCase();
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+
+      // Botoes do Menu
+      document.getElementById("btnTabColaboradores").style.display = ehGestor ? "inline-block" : "none";
+      document.getElementById("btnTabAfastamentos").style.display = ehGestor ? "inline-block" : "none";
+      document.getElementById("btnTabAdmin").style.display = ehGestor ? "inline-block" : "none";
+
+      // Abre por padrao a aba de escalas
+      trocarAba('escalas');
     }
 
     function fazerLogout() {
@@ -482,9 +493,7 @@
         usuarioLogado = JSON.parse(sessaoSalva);
         document.getElementById("modalLogin").style.display = "none";
         document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome}`;
-        if (usuarioLogado.funcao.includes("Coordenadora") || usuarioLogado.funcao.includes("Administrativo")) {
-          document.getElementById("selPerfilUsuario").style.display = "inline-block";
-        }
+        aplicarPermissoes();
       } else {
         document.getElementById("modalLogin").style.display = "flex";
       }
@@ -565,30 +574,26 @@
       carregarDados();
     }
 
-    function alternarPerfil(perfil) {
-      perfilAtual = perfil;
-      document.getElementById("btnTabAdmin").style.display = (perfil === 'Admin') ? 'block' : 'none';
-      renderizarTabelaTrocas();
-      renderizarAdminTrocas();
-    }
-
     function trocarAba(aba) {
+      const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+
+      if (!ehGestor && (aba === 'colaboradores' || aba === 'afastamentos' || aba === 'admin')) {
+        alert("Acesso restrito à Coordenação e Administração.");
+        return;
+      }
+
       document.getElementById("abaColaboradores").style.display = (aba === 'colaboradores') ? "block" : "none";
       document.getElementById("abaAfastamentos").style.display = (aba === 'afastamentos') ? "block" : "none";
       document.getElementById("abaEscalas").style.display = (aba === 'escalas') ? "block" : "none";
       document.getElementById("abaTrocas").style.display = (aba === 'trocas') ? "block" : "none";
       document.getElementById("abaAdmin").style.display = (aba === 'admin') ? "block" : "none";
 
-      const btns = document.querySelectorAll(".tab-btn");
-      btns.forEach((b, idx) => {
-        b.classList.toggle("active", 
-          (aba === 'colaboradores' && idx === 0) || 
-          (aba === 'afastamentos' && idx === 1) || 
-          (aba === 'escalas' && idx === 2) || 
-          (aba === 'trocas' && idx === 3) ||
-          (aba === 'admin' && idx === 4)
-        );
-      });
+      document.getElementById("btnTabColaboradores").classList.toggle("active", aba === 'colaboradores');
+      document.getElementById("btnTabAfastamentos").classList.toggle("active", aba === 'afastamentos');
+      document.getElementById("btnTabEscalas").classList.toggle("active", aba === 'escalas');
+      document.getElementById("btnTabTrocas").classList.toggle("active", aba === 'trocas');
+      document.getElementById("btnTabAdmin").classList.toggle("active", aba === 'admin');
     }
 
     function alterarRegimeVisual(val) {
@@ -614,7 +619,7 @@
       window.print();
     }
 
-    // CADASTRO COLABORADORES
+    // CADASTRO COLABORADORES (GESTOR / MASTER)
     async function salvarColaborador(e) {
       e.preventDefault();
       const idEdit = document.getElementById("cadId").value;
@@ -692,13 +697,14 @@
     function renderizarTabelaColaboradores() {
       ordenarAlfabeticamente();
       const tb = document.getElementById("tbColaboradores");
+      if (!tb) return;
       tb.innerHTML = "";
       colaboradores.forEach(c => {
         tb.innerHTML += `
           <tr>
             <td style="text-align:left;"><b>${c.nome}</b></td>
             <td>${c.cpf}</td>
-            <td>${c.funcao}</td>
+            <td><b>${c.funcao}</b></td>
             <td>${c.coren}</td>
             <td>${c.cnh}</td>
             <td>${c.fone}</td>
@@ -959,7 +965,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS VINCULADAS AO USUÁRIO LOGADO
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1068,7 +1074,12 @@
         if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
 
         let acoes = "-";
-        if (t.status === "PENDENTE") {
+        // Permitir resposta se o usuario for o substituto designado ou for o gestor
+        const ehSubstituto = usuarioLogado && (usuarioLogado.nome === t.substituto);
+        const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
+        const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+
+        if (t.status === "PENDENTE" && (ehSubstituto || ehGestor)) {
           acoes = `
             <button class="btn btn-info" onclick="editarTrocaSolicitante(${t.id})">✏️ Editar</button>
             <button class="btn btn-success" onclick="responderTroca(${t.id}, true)">Aceitar</button>
@@ -1092,7 +1103,7 @@
       });
     }
 
-    // PAINEL ADMINISTRADOR
+    // PAINEL ADMINISTRADOR (EXCLUSIVO GESTOR / MASTER)
     async function adminCancelarTroca(id) {
       const t = trocas.find(item => item.id === id);
       if (t) {
