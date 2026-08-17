@@ -414,7 +414,7 @@
 
     const colaboradoresOficiais = [
       { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", idDupla: 2 },
-      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Condutor Socorrista", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", idDupla: 4 },
+      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", idDupla: 4 },
       { id: 3, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", idDupla: 4 },
       { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", idDupla: 4 },
       { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", idDupla: 2 },
@@ -507,6 +507,10 @@
           if (cData && cData.length > 0) colaboradores = cData;
           else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
 
+          // Garante que seu perfil seja Master caso venha da nuvem antigo
+          const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
+          if (me) me.funcao = "Administrativo / Master";
+
           const { data: tData } = await dbNuvem.from('trocas').select('*');
           if (tData) trocas = tData;
 
@@ -529,6 +533,10 @@
       try {
         const cSalvos = localStorage.getItem('samu_colaboradores_v20');
         colaboradores = cSalvos ? JSON.parse(cSalvos) : JSON.parse(JSON.stringify(colaboradoresOficiais));
+        
+        const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
+        if (me) me.funcao = "Administrativo / Master";
+
         const tSalvas = localStorage.getItem('samu_trocas_v20');
         if (tSalvas) trocas = JSON.parse(tSalvas);
         const aSalvos = localStorage.getItem('samu_afastamentos_v20');
@@ -1074,7 +1082,6 @@
         if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
 
         let acoes = "-";
-        // Permitir resposta se o usuario for o substituto designado ou for o gestor
         const ehSubstituto = usuarioLogado && (usuarioLogado.nome === t.substituto);
         const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
         const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
