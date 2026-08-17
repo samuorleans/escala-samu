@@ -756,19 +756,22 @@
       document.getElementById("grpAfastCustom").style.display = (tipo === "CUSTOM") ? "flex" : "none";
     }
 
+    // REGRA DE VERIFICAÇÃO DE CATEGORIA - INCLUI SEU NOME EM LICENÇAS DE CONDUTOR
     function ehMesmaFuncaoExata(funcaoAfastado, funcaoColega) {
       const fAf = funcaoAfastado.toLowerCase();
       const fCol = funcaoColega.toLowerCase();
 
+      // Se o afastado for Condutor, permite Condutor Socorrista e o perfil Administrativo/Master
       const afEhCondutor = fAf.includes("condutor");
-      const colEhCondutor = fCol.includes("condutor");
+      if (afEhCondutor) {
+        return fCol.includes("condutor") || fCol.includes("master") || fCol.includes("administrativo");
+      }
 
-      if (afEhCondutor) return colEhCondutor;
-
+      // Se o afastado for Técnico ou Enfermeiro
       const afEhTecnico = fAf.includes("técnic") || fAf.includes("enfermeir");
-      const colEhTecnico = fCol.includes("técnic") || fCol.includes("enfermeir");
-
-      if (afEhTecnico) return colEhTecnico && !colEhCondutor;
+      if (afEhTecnico) {
+        return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("condutor");
+      }
 
       return false;
     }
