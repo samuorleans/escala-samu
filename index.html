@@ -46,7 +46,7 @@
     .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); margin-bottom: 20px; }
     .card h3 { margin-top: 0; color: var(--slate-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
 
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: flex-end; }
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end; }
     .form-group { display: flex; flex-direction: column; gap: 4px; }
     label { font-size: 11px; font-weight: 700; color: var(--slate-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     input, select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
@@ -187,7 +187,7 @@
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA LIMPA) -->
+  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA LIMPA E GERADOR DINÂMICO) -->
   <div id="abaEscalas" class="card">
     <div class="grid-form no-print">
       <div class="form-group">
@@ -200,30 +200,58 @@
       </div>
 
       <div class="form-group area-gestor-filtro" style="display:none;">
-        <label>Data-Base Inicial da Sequência</label>
+        <label>Data-Base Inicial Original (24x96)</label>
         <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas(); preencherDatasTrocasForm();">
       </div>
+
       <div class="form-group area-gestor-filtro" style="display:none;">
-        <label>Regime Padrão da Escala</label>
-        <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
-          <option value="24x96">Escala Operacional 24x96 (Padrão 5 Duplas)</option>
-          <option value="24x72">Escala Operacional 24x72 (Acelerada 4 Duplas)</option>
+        <label>Regime da Escala / Simulação</label>
+        <select id="escalaRegime" onchange="toggleOpcoesRegime(this.value)">
+          <option value="24x96">24x96 (Padrão Oficial 5 Duplas)</option>
+          <option value="24x72">24x72 (Rodízio Acelerado 4 Duplas)</option>
+          <option value="24x48">24x48 (Rodízio Acelerado 3 Duplas)</option>
+          <option value="24x24">24x24 (Rodízio Intensivo 2 Duplas)</option>
+          <option value="12x36">12x36 (Plantão 12h Diurno / Noturno)</option>
+          <option value="12x48">12x48 (Plantão 12h com Maior Descanso)</option>
           <option value="40h">Escala Administrativa 40h (Seg - Sex)</option>
-          <option value="coren">Matriz Oficial COREN (Vinculada à Escala Ativa)</option>
-          <option value="CUSTOM">Cadastrar Nova Escala Personalizada...</option>
+          <option value="coren">Matriz Oficial COREN (Visão Geral)</option>
+          <option value="CUSTOM">Customizado (Trabalho x Folga)</option>
         </select>
       </div>
-      <div class="form-group area-gestor-filtro" id="grpGeradorCustom" style="display:none;">
-        <label>Horas Trabalho x Horas Folga</label>
+
+      <div class="form-group area-gestor-filtro" id="grpHorasCustom" style="display:none;">
+        <label>Horas Trab. x Folga</label>
         <div style="display:flex; gap:5px; align-items:center;">
-          <input type="number" id="genHorasTrab" value="24" style="width:65px;" onchange="renderizarEscalas()">
+          <input type="number" id="simHorasTrab" value="24" style="width:65px;">
           <span>x</span>
-          <input type="number" id="genHorasFolga" value="48" style="width:65px;" onchange="renderizarEscalas()">
+          <input type="number" id="simHorasFolga" value="48" style="width:65px;">
         </div>
       </div>
 
-      <button class="btn btn-primary area-gestor-filtro" style="display:none;" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
-      <button class="btn btn-success area-gestor-filtro" style="display:none;" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
+      <div class="form-group area-gestor-filtro" id="grpIntervaloTransicao" style="display:none;">
+        <label>Aplica-se às Categoria(s)</label>
+        <select id="simAplicaCategoria">
+          <option value="TODOS">Toda a Unidade (Condutores e Técnicos)</option>
+          <option value="CONDUTOR">Apenas Condutores Socorristas</option>
+          <option value="TECNICO">Apenas Técnicos de Enfermagem</option>
+        </select>
+      </div>
+
+      <div class="form-group area-gestor-filtro" id="grpDataInicioTrans" style="display:none;">
+        <label>Início da Transição</label>
+        <input type="date" id="simDataInicio" value="2026-09-15">
+      </div>
+
+      <div class="form-group area-gestor-filtro" id="grpDataFimTrans" style="display:none;">
+        <label>Fim da Transição</label>
+        <input type="date" id="simDataFim" value="2026-09-30">
+      </div>
+
+      <div class="area-gestor-filtro" style="display:none; gap:6px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="simularOuGerarEscala(true)">🔍 Simular Escala</button>
+        <button class="btn btn-warning" onclick="resetarSimulacao()">🔄 Resetar para 24x96</button>
+        <button class="btn btn-success" onclick="imprimirAjustado()">🖨️ Imprimir / PDF</button>
+      </div>
     </div>
 
     <!-- CABEÇALHO DO RELATÓRIO DE IMPRESSÃO CLEAN COM LOGO -->
@@ -1340,9 +1368,29 @@
       });
     }
 
-    function toggleRegimeCustomGerador(val) {
-      document.getElementById("grpGeradorCustom").style.display = (val === 'CUSTOM') ? 'flex' : 'none';
+    function toggleOpcoesRegime(val) {
+      const ehCustom = (val === 'CUSTOM');
+      const ehEspecial = (val !== '24x96' && val !== '40h' && val !== 'coren');
+
+      document.getElementById("grpHorasCustom").style.display = ehCustom ? 'flex' : 'none';
+      document.getElementById("grpIntervaloTransicao").style.display = ehEspecial ? 'flex' : 'none';
+      document.getElementById("grpDataInicioTrans").style.display = ehEspecial ? 'flex' : 'none';
+      document.getElementById("grpDataFimTrans").style.display = ehEspecial ? 'flex' : 'none';
+
       alterarRegimeVisual(val);
+    }
+
+    function simularOuGerarEscala(isSimulacao) {
+      renderizarEscalas();
+      if (isSimulacao) {
+        alert("Simulação aplicada na tela! O resultado abaixo reflete os parâmetros selecionados para você revisar.");
+      }
+    }
+
+    function resetarSimulacao() {
+      document.getElementById("escalaRegime").value = "24x96";
+      toggleOpcoesRegime("24x96");
+      renderizarEscalas();
     }
 
     function toggleTipoTroca() {
@@ -1672,81 +1720,90 @@
       });
     }
 
-    // CÁLCULO INTELIGENTE DA ESCALA COM COMPOSIÇÃO DE PLANTÕES 12H / 12H E AFASTAMENTOS
+    // CÁLCULO INTELIGENTE DA ESCALA COM SUPORTE A TRANSIÇÕES E SIMULAÇÃO DE CARGAS DIVERSAS
     function calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao) {
       const dataBase = new Date(dataBaseStr + "T00:00:00");
       const dtAtual = new Date(dtIso + "T00:00:00");
       
       const diffTime = dtAtual.getTime() - dataBase.getTime();
-      const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+      const diasCorridosBase = Math.floor(diffTime / (1000 * 3600 * 24));
 
-      if (diasCorridos < 0) {
+      if (diasCorridosBase < 0) {
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
+      // 1. Obter a dupla padrão oficial do 24x96 para o dia
+      const eqIndex2496 = ((diasCorridosBase % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+      let cond = duplasPadrao[eqIndex2496].cond;
+      let tec = duplasPadrao[eqIndex2496].tec;
+      let obs = "-";
+
+      // 2. Parâmetros do Painel de Simulação/Transição
+      const dtIniTrans = document.getElementById("simDataInicio") ? document.getElementById("simDataInicio").value : "";
+      const dtFimTrans = document.getElementById("simDataFim") ? document.getElementById("simDataFim").value : "";
+      const categoriaAplicada = document.getElementById("simAplicaCategoria") ? document.getElementById("simAplicaCategoria").value : "TODOS";
+
+      const ehPeriodoTransicao = (regimePadrao !== '24x96' && regimePadrao !== '40h' && regimePadrao !== 'coren') && (dtIniTrans && dtFimTrans && dtIso >= dtIniTrans && dtIso <= dtFimTrans);
+
+      // 3. Aplicar Sequência do Regime Especial (se ativo no período)
+      if (ehPeriodoTransicao) {
+        const dtIniObj = new Date(dtIniTrans + "T00:00:00");
+        const diffTrans = Math.floor((dtAtual.getTime() - dtIniObj.getTime()) / (1000 * 3600 * 24));
+        
+        // Identificar qual dupla inicia na Data-Base do Período de Transição (baseado na 24x96)
+        const diffTransBase = Math.floor((dtIniObj.getTime() - dataBase.getTime()) / (1000 * 3600 * 24));
+        const idxDuplaInicioTrans = ((diffTransBase % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+
+        let cicloDias = 5; // Padrão 24x96 (5 duplas)
+        if (regimePadrao === "24x72") cicloDias = 4;
+        if (regimePadrao === "24x48") cicloDias = 3;
+        if (regimePadrao === "24x24") cicloDias = 2;
+        if (regimePadrao === "CUSTOM") {
+          const ht = parseInt(document.getElementById("simHorasTrab").value) || 24;
+          const hf = parseInt(document.getElementById("simHorasFolga").value) || 48;
+          cicloDias = Math.max(1, Math.round((ht + hf) / 24));
+        }
+
+        const idxDuplaSim = (idxDuplaInicioTrans + diffTrans) % duplasPadrao.length;
+        const duplaTrans = duplasPadrao[idxDuplaSim];
+
+        if (categoriaAplicada === "TODOS" || categoriaAplicada === "CONDUTOR") {
+          cond = duplaTrans.cond;
+        }
+        if (categoriaAplicada === "TODOS" || categoriaAplicada === "TECNICO") {
+          tec = duplaTrans.tec;
+        }
+
+        obs = `Simulação / Transição (${regimePadrao.toUpperCase()})`;
+      }
+
+      // 4. Aplicar Licenças e Afastamentos Ativos
       const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
       const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
 
-      let cond = "";
-      let tec = "";
-      let obsCond = "";
-      let obsTec = "";
-
       if (afCond) {
-        const condutoresOficiais = [
-          "Vanderlei José Tasca",
-          "Márcio Becker",
-          "Lucas Vieira Mendes",
-          "Renato Cândido",
-          "Daniel Alexandre Fernandes"
-        ];
+        const condutoresOficiais = ["Vanderlei José Tasca", "Márcio Becker", "Lucas Vieira Mendes", "Renato Cândido", "Daniel Alexandre Fernandes"];
         const condutoresAtivos = condutoresOficiais.filter(nome => nome !== afCond.servidor);
-
-        if (condutoresAtivos.length > 0) {
-          const dtIniAf = new Date(afCond.inicio + "T00:00:00");
-          const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
-          if (diffAf >= 0) {
-            const idxCont = diffAf % condutoresAtivos.length;
-            cond = condutoresAtivos[idxCont];
-            obsCond = `Rodízio 24x72 Categoria (${afCond.tipoMotivo || 'Afastamento'})`;
-          }
+        const dtIniAf = new Date(afCond.inicio + "T00:00:00");
+        const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
+        if (diffAf >= 0 && condutoresAtivos.length > 0) {
+          cond = condutoresAtivos[diffAf % condutoresAtivos.length];
+          obs = `Rodízio Categoria (${afCond.tipoMotivo || 'Afastamento'})`;
         }
-      }
-
-      if (!cond) {
-        const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
-        cond = duplasPadrao[eqIndex % duplasPadrao.length].cond;
       }
 
       if (afTec) {
-        const tecsOficiais = [
-          "Suandre Adão Machado",
-          "Rinaldo Calegario",
-          "Clênio Borges",
-          "Luis Eduardo Formanski Vitório",
-          "Gicerléia Trindade da Rosa"
-        ];
+        const tecsOficiais = ["Suandre Adão Machado", "Rinaldo Calegario", "Clênio Borges", "Luis Eduardo Formanski Vitório", "Gicerléia Trindade da Rosa"];
         const tecsAtivos = tecsOficiais.filter(nome => nome !== afTec.servidor);
-
-        if (tecsAtivos.length > 0) {
-          const dtIniAf = new Date(afTec.inicio + "T00:00:00");
-          const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
-          if (diffAf >= 0) {
-            const idxCont = diffAf % tecsAtivos.length;
-            tec = tecsAtivos[idxCont];
-            obsTec = `Rodízio 24x72 Categoria (${afTec.tipoMotivo || 'Afastamento'})`;
-          }
+        const dtIniAf = new Date(afTec.inicio + "T00:00:00");
+        const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
+        if (diffAf >= 0 && tecsAtivos.length > 0) {
+          tec = tecsAtivos[diffAf % tecsAtivos.length];
+          obs = `Rodízio Categoria (${afTec.tipoMotivo || 'Afastamento'})`;
         }
       }
 
-      if (!tec) {
-        const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
-        tec = duplasPadrao[eqIndex % duplasPadrao.length].tec;
-      }
-
-      let obs = obsCond || obsTec || "-";
-
-      // APLICAR MOTIVO DE AFASTAMENTO COM DESCRITIVO CORRETO
+      // Aplicar substitutos pontuais de atestados
       afastamentos.forEach(atestado => {
         if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
           const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
@@ -1774,7 +1831,7 @@
         }
       });
 
-      // APLICAR TROCAS COM DUALIDADE DIURNO / NOTURNO (12H / 12H)
+      // 5. Aplicar Trocas Individuais Aprovadas (Suporte 12h Diurno e Noturno)
       const trocasAprovadas = trocas.filter(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
       
       if (trocasAprovadas.length > 0) {
@@ -1784,11 +1841,9 @@
         trocasAprovadas.forEach(t => {
           const p = t.periodo || "24h";
           const ehMinhaData = (t.dataMinha === dtIso);
-
           const titular = ehMinhaData ? t.solicitante : t.substituto;
           const cobridor = ehMinhaData ? t.substituto : t.solicitante;
 
-          // Verificar se é condutor
           if (cond.includes(titular) || cond.includes(cobridor)) {
             if (p === "24h") {
               cond = `${cobridor} (Subst. 24h)`;
@@ -1801,7 +1856,6 @@
             }
           }
 
-          // Verificar se é técnico
           if (tec.includes(titular) || tec.includes(cobridor)) {
             if (p === "24h") {
               tec = `${cobridor} (Subst. 24h)`;
@@ -1817,13 +1871,8 @@
           obs = `Troca Aprovada #${t.id} (${formatarPeriodo(p)})`;
         });
 
-        // Formatar célula caso tenha divisão 12h / 12h
-        if (condDiurno && condNoturno) {
-          cond = `<b>${condDiurno}</b> / <b>${condNoturno}</b>`;
-        }
-        if (tecDiurno && tecNoturno) {
-          tec = `<b>${tecDiurno}</b> / <b>${tecNoturno}</b>`;
-        }
+        if (condDiurno && condNoturno) cond = `<b>${condDiurno}</b> / <b>${condNoturno}</b>`;
+        if (tecDiurno && tecNoturno) tec = `<b>${tecDiurno}</b> / <b>${tecNoturno}</b>`;
       }
 
       return { cond, tec, obs };
