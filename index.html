@@ -513,7 +513,7 @@
     const colaboradoresOficiais = [
       { id: 1, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", senha: "", idDupla: 4 },
       { id: 2, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", senha: "", idDupla: 2 },
-      { id: 3, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", senha: "", idDupla: 4 },
+      { id: 3, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Condutor Socorrista", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", senha: "", idDupla: 4 },
       { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", senha: "", idDupla: 4 },
       { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", senha: "", idDupla: 2 },
       { id: 6, nome: "Luis Eduardo Formanski Vitório", cpf: "091.311.529-02", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "1551746", cnh: "N/A", fone: "(48) 99991-1598", email: "eduardo.fvitorio@hotmail.com", senha: "", idDupla: 3 },
@@ -524,6 +524,7 @@
       { id: 11, nome: "Vanderlei José Tasca", cpf: "803.699.019-91", funcao: "Condutor Socorrista", coren: "N/A", cnh: "940076430", fone: "(48) 99192-6750", email: "vandotasca22@gmail.com", senha: "", idDupla: 0 }
     ];
 
+    // ORDEM FIXA OFICIAL DAS DUPLAS NA VIATURA
     const duplasPadrao = [
       { cond: "Vanderlei José Tasca", tec: "Suandre Adão Machado" },
       { cond: "Márcio Becker", tec: "Rinaldo Calegario" },
@@ -680,7 +681,7 @@
       }
 
       const f = usuarioLogado.funcao.toLowerCase();
-      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || usuarioLogado.cpf.replace(/\D/g, '') === "07548636970";
 
       document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome} (${usuarioLogado.funcao})`;
       document.getElementById("btnAbrirLogin").style.display = "none";
@@ -718,8 +719,9 @@
           if (cData && cData.length > 0) colaboradores = cData;
           else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
 
+          // GARANTE DANIEL COMO CONDUTOR SOCORRISTA (E MASTER DE GESTÃO)
           const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
-          if (me) me.funcao = "Administrativo / Master";
+          if (me) me.funcao = "Condutor Socorrista";
 
           const { data: tData } = await dbNuvem.from('trocas').select('*');
           if (tData) trocas = tData;
@@ -746,7 +748,7 @@
         colaboradores = cSalvos ? JSON.parse(cSalvos) : JSON.parse(JSON.stringify(colaboradoresOficiais));
         
         const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
-        if (me) me.funcao = "Administrativo / Master";
+        if (me) me.funcao = "Condutor Socorrista";
 
         const tSalvas = localStorage.getItem('samu_trocas_v20');
         if (tSalvas) trocas = JSON.parse(tSalvas);
@@ -796,7 +798,7 @@
 
     function trocarAba(aba) {
       const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
-      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || (usuarioLogado && usuarioLogado.cpf.replace(/\D/g, '') === "07548636970");
 
       if (!usuarioLogado && aba !== 'escalas') {
         abrirModalLogin();
@@ -992,18 +994,18 @@
       document.getElementById("grpAfastCustom").style.display = (tipo === "CUSTOM") ? "flex" : "none";
     }
 
-    function ehMesmaFuncaoExata(funcaoAfastado, funcaoColega) {
+    function ehMesmaFuncaoExata(funcaoAfastado, funcaoColega, nomeColega) {
       const fAf = funcaoAfastado.toLowerCase();
       const fCol = funcaoColega.toLowerCase();
 
       const afEhCondutor = fAf.includes("condutor");
       if (afEhCondutor) {
-        return fCol.includes("condutor") || fCol.includes("master") || fCol.includes("administrativo");
+        return fCol.includes("condutor") || nomeColega === "Daniel Alexandre Fernandes";
       }
 
       const afEhTecnico = fAf.includes("técnic") || fAf.includes("enfermeir");
       if (afEhTecnico) {
-        return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("condutor");
+        return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("coordenadora") && nomeColega !== "Daniel Alexandre Fernandes";
       }
 
       return false;
@@ -1029,7 +1031,7 @@
 
       if (dtFim < dtIni) return;
 
-      const colegasMesmaFuncao = colaboradores.filter(c => c.nome !== nomeServidor && ehMesmaFuncaoExata(servidorObj.funcao, c.funcao));
+      const colegasMesmaFuncao = colaboradores.filter(c => c.nome !== nomeServidor && ehMesmaFuncaoExata(servidorObj.funcao, c.funcao, c.nome));
 
       let cur = new Date(dtIni);
       let plantoesEncontrados = 0;
@@ -1337,7 +1339,7 @@
       tb.innerHTML = "";
 
       const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
-      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || (usuarioLogado && usuarioLogado.cpf.replace(/\D/g, '') === "07548636970");
 
       const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => 
         usuarioLogado && (t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome)
@@ -1464,32 +1466,32 @@
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
-      let modCiclo = 5; // Padrão 24x96
-      if (regimePadrao === "24x72") modCiclo = 4;
-      if (regimePadrao === "CUSTOM") {
-        const ht = Number(document.getElementById("genHorasTrab")?.value || 24);
-        const hf = Number(document.getElementById("genHorasFolga")?.value || 48);
-        modCiclo = Math.max(1, Math.round((ht + hf) / 24));
-      }
-
       // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA CONTINUO
       const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio);
-      const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && a.regime.includes("Categoria") && dtIso >= a.inicio);
+      const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio);
 
       let cond = "";
       let tec = "";
       let obsCond = "";
       let obsTec = "";
 
-      // CALCULO CONDUTORES
+      // CALCULO CONDUTORES (LISTA OFICIAL FIXA COM DANIEL)
       if (afCond) {
-        const condutoresAtivos = colaboradores.filter(c => c.funcao.includes("Condutor") && c.nome !== afCond.servidor);
+        const condutoresOficiais = [
+          "Vanderlei José Tasca",
+          "Márcio Becker",
+          "Lucas Vieira Mendes",
+          "Renato Cândido",
+          "Daniel Alexandre Fernandes"
+        ];
+        const condutoresAtivos = condutoresOficiais.filter(nome => nome !== afCond.servidor);
+
         if (condutoresAtivos.length > 0) {
           const dtIniAf = new Date(afCond.inicio + "T00:00:00");
           const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
           if (diffAf >= 0) {
             const idxCont = diffAf % condutoresAtivos.length;
-            cond = condutoresAtivos[idxCont].nome;
+            cond = condutoresAtivos[idxCont];
             obsCond = "Rodízio 24x72 Categoria";
           }
         }
@@ -1502,13 +1504,21 @@
 
       // CALCULO TÉCNICOS DE ENFERMAGEM
       if (afTec) {
-        const tecsAtivos = colaboradores.filter(c => (c.funcao.includes("Técnic") || c.funcao.includes("Enfermeir")) && !c.funcao.includes("Coordenadora") && !c.funcao.includes("Master") && c.nome !== afTec.servidor);
+        const tecsOficiais = [
+          "Suandre Adão Machado",
+          "Rinaldo Calegario",
+          "Clênio Borges",
+          "Luis Eduardo Formanski Vitório",
+          "Gicerléia Trindade da Rosa"
+        ];
+        const tecsAtivos = tecsOficiais.filter(nome => nome !== afTec.servidor);
+
         if (tecsAtivos.length > 0) {
           const dtIniAf = new Date(afTec.inicio + "T00:00:00");
           const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
           if (diffAf >= 0) {
             const idxCont = diffAf % tecsAtivos.length;
-            tec = tecsAtivos[idxCont].nome;
+            tec = tecsAtivos[idxCont];
             obsTec = "Rodízio 24x72 Categoria";
           }
         }
@@ -1664,7 +1674,7 @@
         colaboradores.forEach(c => {
           let regExibido = c.coren !== "N/A" ? c.coren : c.cnh;
           let line = `<tr><td style="text-align:left;"><b>${c.nome}</b></td><td>${regExibido}</td><td>${c.funcao}</td>`;
-          const eh40h = c.funcao.includes("Coordenadora") || c.funcao.includes("Administrativo");
+          const eh40h = c.funcao.includes("Coordenadora");
 
           for (let d = 1; d <= diasNoMes; d++) {
             const dtAtual = new Date(ano, mes - 1, d);
