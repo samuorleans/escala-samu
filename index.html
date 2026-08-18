@@ -3,39 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema Integrado de Gestão de Escalas e Trocas — SAMU 192</title>
+  <title>Sistema Integrado de Escalas e Trocas — SAMU 192 USB 11 Orleans</title>
   <!-- BIBLIOTECAS SUPABASE E EMAILJS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-    body { margin: 0; padding: 15px; background-color: #f1f5f9; color: #0f172a; }
+    :root {
+      --primary-red: #b71c1c;
+      --dark-blue: #0f172a;
+      --slate-dark: #1e293b;
+      --slate-muted: #64748b;
+      --bg-light: #f8fafc;
+      --border-color: #e2e8f0;
+    }
 
-    /* OVERLAY E MODAL DE LOGIN */
-    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.88); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
-    .box-login { background: #fff; padding: 25px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; position: relative; }
-    .box-login h2 { color: #b71c1c; margin-top: 0; font-size: 18px; text-transform: uppercase; }
-    .box-login input { width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-    .btn-fechar-modal { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b; font-weight: bold; }
+    * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
+    body { margin: 0; padding: 12px; background-color: #f1f5f9; color: var(--dark-blue); }
 
-    header { background: #b71c1c; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
-    .user-info { font-size: 13px; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
+    /* LAYOUT MODERNO RESPONSIVO */
+    .container { max-width: 1280px; margin: 0 auto; }
 
-    .nav-tabs { display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; flex-wrap: wrap; }
-    .tab-btn { padding: 10px 18px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; background: #e2e8f0; color: #334155; }
-    .tab-btn.active { background: #b71c1c; color: #fff; }
+    /* OVERLAY E MODAL DE LOGIN CLEAN */
+    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px); }
+    .box-login { background: #fff; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); text-align: center; position: relative; }
+    .box-login img.logo-login { max-height: 70px; margin-bottom: 12px; object-fit: contain; }
+    .box-login h2 { color: var(--primary-red); margin-top: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .box-login input { width: 100%; margin-bottom: 12px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+    .box-login input:focus { border-color: var(--primary-red); outline: none; }
+    .btn-fechar-modal { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--slate-muted); font-weight: bold; }
 
-    .card { background: #fff; padding: 18px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 20px; }
-    .card h3 { margin-top: 0; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    header { background: linear-gradient(135deg, #b71c1c 0%, #880e4f 100%); color: #fff; padding: 16px 20px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .header-brand img { max-height: 48px; border-radius: 6px; background: #fff; padding: 2px; }
+    header h1 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+    header small { font-size: 12px; opacity: 0.9; }
+    .user-info { font-size: 12px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end; }
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; flex-wrap: wrap; }
+    .tab-btn { padding: 10px 16px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; background: #e2e8f0; color: #334155; font-size: 13px; transition: all 0.2s; }
+    .tab-btn.active { background: var(--primary-red); color: #fff; box-shadow: 0 2px 4px rgba(183, 28, 28, 0.3); }
+
+    .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: var(--slate-dark); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: flex-end; }
     .form-group { display: flex; flex-direction: column; gap: 4px; }
-    label { font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; }
-    input, select { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; outline: none; }
+    label { font-size: 11px; font-weight: 700; color: var(--slate-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
 
-    .btn { padding: 8px 14px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; }
+    /* NAVEGAÇÃO DE MÊS/ANO COM SETAS */
+    .mes-selector { display: flex; align-items: center; gap: 6px; }
+    .btn-arrow { background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; color: #334155; font-size: 14px; transition: background 0.2s; }
+    .btn-arrow:hover { background: #cbd5e1; }
+
+    .btn { padding: 9px 16px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
     .btn-primary { background: #2563eb; }
     .btn-success { background: #16a34a; }
     .btn-warning { background: #d97706; color: #fff; }
@@ -43,13 +66,13 @@
     .btn-info { background: #0284c7; }
     .btn-dark { background: #334155; }
 
-    .table-responsive { overflow-x: auto; background: #fff; border-radius: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
-    th { background: #1e293b; color: #fff; padding: 8px; border: 1px solid #0f172a; font-weight: 600; text-transform: uppercase; }
-    td { padding: 6px; border: 1px solid #cbd5e1; vertical-align: middle; }
-    tr:nth-child(even) { background-color: #f8fafc; }
+    .table-responsive { overflow-x: auto; background: #fff; border-radius: 8px; border: 1px solid var(--border-color); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
+    th { background: var(--slate-dark); color: #fff; padding: 10px 8px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    td { padding: 8px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    tr:nth-child(even) { background-color: var(--bg-light); }
 
-    .badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
     .badge-pendente { background: #fef3c7; color: #b45309; }
     .badge-aprovado { background: #dcfce7; color: #15803d; }
     .badge-recusado { background: #fee2e2; color: #b91c1c; }
@@ -59,61 +82,70 @@
     .st-fol { background-color: #dcfce7; color: #166534; }
     .col-fds { background-color: #e2e8f0 !important; font-weight: bold; }
 
-    .header-institucional { display: none; text-align: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px; }
-    .header-institucional h2 { margin: 0; font-size: 11pt; text-transform: uppercase; color: #000; }
-    .header-institucional h3 { margin: 2px 0; font-size: 9.5pt; color: #000; }
-    .header-institucional p { margin: 0; font-size: 8.5pt; font-weight: bold; color: #000; }
+    /* CABEÇALHO INSTITUCIONAL CLEAN PARA IMPRESSÃO DE RELATÓRIOS */
+    .header-relatorio-impressao { display: none; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+    .header-relatorio-impressao .rel-container { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+    .header-relatorio-impressao img.logo-relatorio { max-height: 65px; object-fit: contain; }
+    .header-relatorio-impressao .rel-texto { flex: 1; text-align: center; }
+    .header-relatorio-impressao h2 { margin: 0; font-size: 11pt; font-weight: 800; text-transform: uppercase; color: #000; }
+    .header-relatorio-impressao h3 { margin: 2px 0; font-size: 9.5pt; font-weight: 700; color: #000; }
+    .header-relatorio-impressao p { margin: 0; font-size: 8.5pt; font-weight: 600; color: #000; }
 
     .status-nuvem { font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: #dcfce7; color: #15803d; display: inline-flex; align-items: center; gap: 4px; }
 
     .rodape-assinaturas { display: none; }
 
     @media print {
-      .no-print, header, .nav-tabs, .card h3, .grid-form { display: none !important; }
+      .no-print, header, .nav-tabs, .card h3, .grid-form, .btn-arrow { display: none !important; }
       body { background: #fff; padding: 0; margin: 0; color: #000; }
-      .card { box-shadow: none; padding: 0; margin: 0; }
-      .header-institucional { display: block !important; }
-      .table-responsive { overflow: visible !important; }
+      .card { box-shadow: none; border: none; padding: 0; margin: 0; }
+      .header-relatorio-impressao { display: block !important; }
+      .table-responsive { border: none; overflow: visible !important; }
 
-      body.modo-retrato { font-size: 7.2pt; }
-      body.modo-retrato table { width: 100% !important; font-size: 7.2pt !important; }
-      body.modo-retrato th { background-color: #f1f5f9 !important; color: #000 !important; padding: 2px 1px !important; border: 1px solid #000 !important; }
-      body.modo-retrato td { padding: 1.5px 1px !important; border: 1px solid #000 !important; }
+      body.modo-retrato { font-size: 7.5pt; }
+      body.modo-retrato table { width: 100% !important; font-size: 7.5pt !important; }
+      body.modo-retrato th { background-color: #e2e8f0 !important; color: #000 !important; padding: 3px 2px !important; border: 1px solid #000 !important; }
+      body.modo-retrato td { padding: 3px 2px !important; border: 1px solid #000 !important; }
 
       body.modo-paisagem { font-size: 6.5pt; }
       body.modo-paisagem table { width: 100% !important; font-size: 6.5pt !important; table-layout: fixed !important; }
-      body.modo-paisagem th, body.modo-paisagem td { border: 1px solid #000 !important; padding: 1px 0 !important; }
+      body.modo-paisagem th, body.modo-paisagem td { border: 1px solid #000 !important; padding: 2px 0 !important; }
 
       .st-i { background-color: #fef08a !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .st-fol { background-color: #ffffff !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .col-fds { background-color: #e2e8f0 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
 
-      .rodape-assinaturas { display: flex !important; justify-content: space-between; align-items: flex-end; margin-top: 15px; font-size: 7.5pt; }
-      .campo-assinatura { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 3px; }
+      .rodape-assinaturas { display: flex !important; justify-content: space-between; align-items: flex-end; margin-top: 25px; font-size: 8pt; }
+      .campo-assinatura { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 4px; }
     }
   </style>
 </head>
 <body class="modo-retrato">
+<div class="container">
 
   <!-- MODAL DE LOGIN DE ACESSO RESTRITO -->
   <div id="modalLogin">
     <div class="box-login">
       <button class="btn-fechar-modal" onclick="fecharModalLogin()">✕</button>
+      <img src="logo.png" alt="Logo SAMU" class="logo-login logo-dinamica" onerror="this.style.display='none'">
       <h2>SAMU 192 — Acesso Restrito</h2>
-      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar trocas e gestão.</p>
+      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar o painel restrito.</p>
       
       <form id="formLogin" onsubmit="autenticarUsuario(event)">
         <input type="text" id="loginCPF" placeholder="CPF (Ex: 000.000.000-00)" required>
         <input type="password" id="loginSenha" placeholder="Senha de Acesso" required>
-        <button class="btn btn-primary" type="submit" style="width:100%; padding:10px;">🔑 Entrar no Sistema</button>
+        <button class="btn btn-primary" type="submit" style="width:100%; padding:11px;">🔑 Entrar no Sistema</button>
       </form>
     </div>
   </div>
 
   <header class="no-print">
-    <div>
-      <h1>SAMU 192 — Módulo Integrado de Escalas e Trocas</h1>
-      <small>Unidade de Suporte Básico — USB 011 Orleans</small>
+    <div class="header-brand">
+      <img src="logo.png" alt="Logo SAMU" class="logo-dinamica" onerror="this.style.display='none'">
+      <div>
+        <h1>SAMU 192 — Módulo Integrado de Escalas</h1>
+        <small>Unidade de Suporte Básico — USB 11 Orleans</small>
+      </div>
     </div>
     <div class="user-info">
       <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
@@ -132,28 +164,34 @@
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA) -->
+  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA LIMPA) -->
   <div id="abaEscalas" class="card">
     <div class="grid-form no-print">
       <div class="form-group">
         <label>Mês / Ano da Escala</label>
-        <input type="month" id="escalaMesAno" value="2026-09" onchange="renderizarEscalas()">
+        <div class="mes-selector">
+          <button class="btn-arrow" type="button" onclick="mudarMes(-1)">◀</button>
+          <input type="month" id="escalaMesAno" value="2026-09" onchange="renderizarEscalas()">
+          <button class="btn-arrow" type="button" onclick="mudarMes(1)">▶</button>
+        </div>
       </div>
-      <div class="form-group">
+
+      <!-- CAMPOS DISPONÍVEIS EXCLUSIVAMENTE APÓS AUTENTICAÇÃO/GESTOR -->
+      <div class="form-group area-gestor-filtro" style="display:none;">
         <label>Data-Base Inicial da Sequência</label>
         <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas()">
       </div>
-      <div class="form-group">
+      <div class="form-group area-gestor-filtro" style="display:none;">
         <label>Regime Padrão da Escala</label>
         <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
           <option value="24x96">Escala Operacional 24x96</option>
           <option value="24x72">Escala Operacional 24x72</option>
           <option value="40h">Escala Administrativa 40h</option>
           <option value="coren">Matriz Oficial COREN</option>
-          <option value="CUSTOM">Cadastrar Nova Escala (Personalizada)...</option>
+          <option value="CUSTOM">Cadastrar Nova Escala...</option>
         </select>
       </div>
-      <div class="form-group" id="grpGeradorCustom" style="display:none;">
+      <div class="form-group area-gestor-filtro" id="grpGeradorCustom" style="display:none;">
         <label>Horas Trabalho x Folga</label>
         <div style="display:flex; gap:5px; align-items:center;">
           <input type="number" id="genHorasTrab" value="12" style="width:60px;" onchange="renderizarEscalas()">
@@ -161,14 +199,21 @@
           <input type="number" id="genHorasFolga" value="36" style="width:60px;" onchange="renderizarEscalas()">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
-      <button class="btn btn-success" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
+
+      <button class="btn btn-primary area-gestor-filtro" style="display:none;" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
+      <button class="btn btn-success area-gestor-filtro" style="display:none;" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
     </div>
 
-    <div class="header-institucional">
-      <h2>ESTADO DE SANTA CATARINA — SECRETARIA MUNICIPAL DE SAÚDE DE ORLEANS</h2>
-      <h3>UNIDADE DE SUPORTE BÁSICO DE ATENDIMENTO MÓVEL — USB 011 ORLEANS</h3>
-      <p id="tituloEscalaImpressao">ESCALA OPERACIONAL MENSAL — SETEMBRO DE 2026</p>
+    <!-- CABEÇALHO DO RELATÓRIO DE IMPRESSÃO CLEAN COM LOGO -->
+    <div class="header-relatorio-impressao">
+      <div class="rel-container">
+        <img src="logo.png" alt="Logo SAMU" class="logo-relatorio logo-dinamica" onerror="this.style.display='none'">
+        <div class="rel-texto">
+          <h2>ESTADO DE SANTA CATARINA — SECRETARIA MUNICIPAL DE SAÚDE DE ORLEANS</h2>
+          <h3>UNIDADE DE SUPORTE BÁSICO DE ATENDIMENTO MÓVEL — USB 11 ORLEANS</h3>
+          <p id="tituloEscalaImpressao">ESCALA OPERACIONAL MENSAL — SETEMBRO DE 2026</p>
+        </div>
+      </div>
     </div>
 
     <div class="table-responsive" style="margin-top: 10px;">
@@ -180,7 +225,7 @@
 
     <div class="rodape-assinaturas">
       <div class="campo-assinatura">Responsável Técnico (RT) Enfermagem / COREN-SC</div>
-      <div class="campo-assinatura">Coordenação Operacional SAMU 192</div>
+      <div class="campo-assinatura">Coordenação Operacional SAMU 192 — USB 11 Orleans</div>
     </div>
   </div>
 
@@ -378,10 +423,16 @@
 
   <!-- ABA 5: PAINEL ADMINISTRADOR (EXCLUSIVO MASTER/COORDENADOR) -->
   <div id="abaAdmin" class="card" style="display:none;">
-    <h3>⚙️ Gestão Administrativa, Cancelamento e Auditoria Geral de Trocas</h3>
-    <p style="font-size: 12px; color: #475569;">Como Administrador / Coordenador, você possui autoridade para reajustar ou suspender qualquer troca enviada.</p>
+    <h3>⚙️ Gestão Administrativa, Anexo de Logo e Auditoria Geral</h3>
+    
+    <!-- CAMPO PARA ANEXAR LOGO PELO NAVEGADOR -->
+    <div style="background:#f8fafc; padding:15px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:20px;">
+      <label style="color:#b71c1c;"><b>🖼️ LOGO INSTITUCIONAL DO SISTEMA E DOS RELATÓRIOS:</b></label>
+      <p style="font-size:11px; color:#64748b; margin:4px 0 10px 0;">O sistema lê automaticamente o arquivo <code>logo.png</code> na pasta do GitHub. Se quiser alterar a imagem sem mexer no GitHub, anexe uma nova logo abaixo:</p>
+      <input type="file" id="inputLogoUpload" accept="image/*" onchange="uploadNovaLogo(event)">
+    </div>
 
-    <div class="table-responsive" style="margin-top: 15px;">
+    <div class="table-responsive">
       <table>
         <thead>
           <tr>
@@ -399,6 +450,8 @@
       </table>
     </div>
   </div>
+
+</div>
 
   <script>
     const SUPABASE_URL = "https://rcpgukslnlfptreiusff.supabase.co"; 
@@ -443,6 +496,45 @@
       colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
+    // NAVEGAÇÃO DE MÊS COM SETAS ◀ ▶
+    function mudarMes(delta) {
+      const inputMes = document.getElementById("escalaMesAno");
+      if (!inputMes.value) return;
+
+      let [ano, mes] = inputMes.value.split('-').map(Number);
+      mes += delta;
+
+      if (mes > 12) { mes = 1; ano++; }
+      if (mes < 1) { mes = 12; ano--; }
+
+      inputMes.value = `${ano}-${String(mes).padStart(2, '0')}`;
+      renderizarEscalas();
+    }
+
+    // CARREGAR E EXIBIR LOGO PERSONALIZADA
+    function uploadNovaLogo(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const logoData = evt.target.result;
+          localStorage.setItem("samu_logo_custom", logoData);
+          aplicarLogoCarregada();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function aplicarLogoCarregada() {
+      const logoSalva = localStorage.getItem("samu_logo_custom");
+      if (logoSalva) {
+        document.querySelectorAll(".logo-dinamica").forEach(img => {
+          img.src = logoSalva;
+          img.style.display = "inline-block";
+        });
+      }
+    }
+
     // GESTÃO DE MODAL DE LOGIN E PERMISSÕES
     function abrirModalLogin() {
       document.getElementById("modalLogin").style.display = "flex";
@@ -472,6 +564,8 @@
     }
 
     function aplicarPermissoes() {
+      const elGestores = document.querySelectorAll(".area-gestor-filtro");
+
       if (!usuarioLogado) {
         document.getElementById("labelUsuarioConectado").innerText = "Visualização Pública (Consulta)";
         document.getElementById("btnAbrirLogin").style.display = "inline-flex";
@@ -480,6 +574,8 @@
         document.getElementById("btnTabColaboradores").style.display = "none";
         document.getElementById("btnTabAfastamentos").style.display = "none";
         document.getElementById("btnTabAdmin").style.display = "none";
+
+        elGestores.forEach(el => el.style.display = "none");
         trocarAba('escalas');
         return;
       }
@@ -495,6 +591,8 @@
       document.getElementById("btnTabColaboradores").style.display = ehGestor ? "inline-block" : "none";
       document.getElementById("btnTabAfastamentos").style.display = ehGestor ? "inline-block" : "none";
       document.getElementById("btnTabAdmin").style.display = ehGestor ? "inline-block" : "none";
+
+      elGestores.forEach(el => el.style.display = ehGestor ? "flex" : "none");
 
       trocarAba('trocas');
     }
@@ -540,6 +638,7 @@
       }
       ordenarAlfabeticamente();
       verificarSessao();
+      aplicarLogoCarregada();
       renderizarTudo();
     }
 
@@ -1099,7 +1198,6 @@
       const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
       const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
 
-      // Filtra exclusivamente trocas pertencentes ao usuário (gestores visualizam tudo)
       const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => 
         usuarioLogado && (t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome)
       );
