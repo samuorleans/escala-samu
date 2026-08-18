@@ -80,6 +80,7 @@
     .st-i { background-color: #fef08a; font-weight: bold; color: #854d0e; }
     .st-fol { background-color: #dcfce7; color: #166534; }
     .col-fds { background-color: #e2e8f0 !important; font-weight: bold; }
+    .col-feriado { background-color: #fecaca !important; color: #991b1b !weight: bold; }
 
     .header-relatorio-impressao { display: none; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
     .header-relatorio-impressao .rel-container { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
@@ -112,6 +113,7 @@
       .st-i { background-color: #fef08a !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .st-fol { background-color: #ffffff !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .col-fds { background-color: #e2e8f0 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
+      .col-feriado { background-color: #fecaca !important; color: #000 !important; -webkit-print-color-adjust: exact; }
 
       .rodape-assinaturas { display: flex !important; justify-content: space-between; align-items: flex-end; margin-top: 25px; font-size: 8pt; }
       .campo-assinatura { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 4px; }
@@ -204,7 +206,7 @@
         <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
           <option value="24x96">Escala Operacional 24x96</option>
           <option value="24x72">Escala Operacional 24x72</option>
-          <option value="40h">Escala Administrativa 40h</option>
+          <option value="40h">Escala Administrativa 40h (Seg - Sex)</option>
           <option value="coren">Matriz Oficial COREN</option>
           <option value="CUSTOM">Cadastrar Nova Escala...</option>
         </select>
@@ -403,8 +405,9 @@
         <div class="form-group">
           <label>Regime Temporário Adotado</label>
           <select id="afastRegimeTipo" onchange="toggleRegimeCustomAfastamento()" required>
-            <option value="24x96">24x96 (Cobertura Individual de Plantões Reais)</option>
-            <option value="24x72">24x72 (Rodízio Acelerado)</option>
+            <option value="24x96">24x96 (Manter 24x96 com Substituto Escalado)</option>
+            <option value="24x72_CATEGORIA">24x72 (Rodízio Acelerado Apenas para a Categoria)</option>
+            <option value="24x72_GERAL">24x72 (Rodízio Acelerado para Toda a Unidade)</option>
             <option value="CUSTOM">Outra Escala (Personalizado)</option>
           </select>
         </div>
@@ -423,7 +426,7 @@
       </div>
 
       <div id="boxSubstitutosDiarios" style="margin-top: 15px; background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-        <label style="color:#b71c1c; font-size:12px;"><b>PLANTÕES REAIS DO PERÍODO (SUBSTITUTOS FILTRADOS POR CATEGORIA):</b></label>
+        <label style="color:#b71c1c; font-size:12px;"><b>PLANTÕES REAIS DO PERÍODO (COBERTURA DIÁRIA EM 24X96):</b></label>
         <div id="containerGradeDias" style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
           <span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar a grade.</span>
         </div>
@@ -499,10 +502,16 @@
       }
     } catch(e) {}
 
+    const feriadosOficiaisNacionais = [
+      "2026-01-01", "2026-02-16", "2026-02-17", "2026-04-03", "2026-04-21", 
+      "2026-05-01", "2026-06-04", "2026-09-07", "2026-10-12", "2026-11-02", 
+      "2026-11-15", "2026-12-25"
+    ];
+
     const colaboradoresOficiais = [
-      { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", senha: "", idDupla: 2 },
-      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", senha: "", idDupla: 4 },
-      { id: 3, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", senha: "", idDupla: 4 },
+      { id: 1, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", senha: "", idDupla: 4 },
+      { id: 2, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", senha: "", idDupla: 2 },
+      { id: 3, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", senha: "", idDupla: 4 },
       { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", senha: "", idDupla: 4 },
       { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", senha: "", idDupla: 2 },
       { id: 6, nome: "Luis Eduardo Formanski Vitório", cpf: "091.311.529-02", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "1551746", cnh: "N/A", fone: "(48) 99991-1598", email: "eduardo.fvitorio@hotmail.com", senha: "", idDupla: 3 },
@@ -526,7 +535,11 @@
     let afastamentos = [];
 
     function ordenarAlfabeticamente() {
-      colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      colaboradores.sort((a, b) => {
+        if (a.funcao.includes("Coordenadora")) return -1;
+        if (b.funcao.includes("Coordenadora")) return 1;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
     }
 
     function mudarMes(delta) {
@@ -566,7 +579,6 @@
       }
     }
 
-    // MODAIS DE LOGIN E RECUPERAÇÃO DE SENHA
     function abrirModalLogin() {
       document.getElementById("modalLogin").style.display = "flex";
     }
@@ -697,7 +709,6 @@
       aplicarPermissoes();
     }
 
-    // CARREGAMENTO E SINCRONIZAÇÃO NUVEM
     async function carregarDados() {
       if (dbNuvem) {
         try {
@@ -1067,6 +1078,9 @@
       const tipoReg = document.getElementById("afastRegimeTipo").value;
       let regNome = tipoReg;
 
+      if (tipoReg === "24x72_CATEGORIA") regNome = "24x72 (Apenas Categoria)";
+      if (tipoReg === "24x72_GERAL") regNome = "24x72 (Unidade Geral)";
+      if (tipoReg === "24x96") regNome = "24x96 (Com Substituto)";
       if (tipoReg === "CUSTOM") {
         const ht = document.getElementById("afastHorasTrab").value || 24;
         const hf = document.getElementById("afastHorasFolga").value || 48;
@@ -1171,7 +1185,7 @@
             return `<div><b>Plantão ${dtFmt}:</b> ${sub === 'A DEFINIR' ? '<span style="color:#dc2626;">A DEFINIR</span>' : '<span style="color:#16a34a; font-weight:bold;">'+sub+'</span>'}</div>`;
           }).join("");
         } else {
-          resumoSubs = "Sem substitutos em plantão real";
+          resumoSubs = "Rodízio em 24x72 ou sem substitutos";
         }
 
         tb.innerHTML += `
@@ -1487,10 +1501,18 @@
           } else {
             afastamentos.forEach(atestado => {
               if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
+                const is2472Cat = atestado.regime.includes("Categoria");
+                const is2472Geral = atestado.regime.includes("Unidade Geral") || atestado.regime === "24x72";
+
                 const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
 
                 if (cond === atestado.servidor) {
-                  if (substDia && substDia !== "A DEFINIR") {
+                  if (is2472Cat && atestado.funcao.includes("Condutor")) {
+                    const condutoresAtivos = colaboradores.filter(c => c.funcao.includes("Condutor") && c.nome !== atestado.servidor);
+                    const idx4 = Math.abs(diasCorridos) % condutoresAtivos.length;
+                    cond = `${condutoresAtivos[idx4].nome} (Rodízio 24x72)`;
+                    obs = `<span style="color:#0284c7; font-weight:bold;">Escala 24x72 Isolada (Condutores)</span>`;
+                  } else if (substDia && substDia !== "A DEFINIR") {
                     cond = `${substDia} (Subst.)`;
                     obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
                   } else {
@@ -1500,7 +1522,12 @@
                 }
 
                 if (tec === atestado.servidor) {
-                  if (substDia && substDia !== "A DEFINIR") {
+                  if (is2472Cat && (atestado.funcao.includes("Técnic") || atestado.funcao.includes("Enfermeir"))) {
+                    const tecsAtivos = colaboradores.filter(c => (c.funcao.includes("Técnic") || c.funcao.includes("Enfermeir")) && c.nome !== atestado.servidor);
+                    const idx4 = Math.abs(diasCorridos) % tecsAtivos.length;
+                    tec = `${tecsAtivos[idx4].nome} (Rodízio 24x72)`;
+                    obs = `<span style="color:#0284c7; font-weight:bold;">Escala 24x72 Isolada (Técnicos)</span>`;
+                  } else if (substDia && substDia !== "A DEFINIR") {
                     tec = `${substDia} (Subst.)`;
                     obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
                   } else {
@@ -1536,19 +1563,43 @@
           `;
         }
       } else if (regimePadrao === "40h") {
-        head.innerHTML = `<tr><th>DIA</th><th>SEMANA</th><th>PERÍODO</th><th>SERVIDORES 40H</th><th>OBSERVAÇÕES</th></tr>`;
+        head.innerHTML = `<tr><th>DIA</th><th>SEMANA</th><th>HORÁRIO EXPEDIENTE</th><th>RESPONSÁVEL TÉCNICA / ENFERMAGEM</th><th>OBSERVAÇÕES / SITUAÇÃO</th></tr>`;
+        
+        ordenarAlfabeticamente();
+        const coord = colaboradores.find(c => c.funcao.includes("Coordenadora")) || { nome: "Edimara Tochetto Suaya Netto" };
+
         for (let d = 1; d <= diasNoMes; d++) {
           const dt = new Date(ano, mes - 1, d);
           const dtFmt = `${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
-          const fds = (dt.getDay() === 0 || dt.getDay() === 6);
+          const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          
+          const ehFds = (dt.getDay() === 0 || dt.getDay() === 6);
+          const ehFeriado = feriadosOficiaisNacionais.includes(dtIso);
+
+          let hor = "08h às 17h (40h Semanais)";
+          let serv = `<b>${coord.nome}</b> (Enfermeira Coordenadora)`;
+          let obs = "Expediente Normal";
+          let rowClass = "";
+
+          if (ehFds) {
+            hor = "FOLGA SEMANAL";
+            serv = "—";
+            obs = "Final de Semana";
+            rowClass = "col-fds";
+          } else if (ehFeriado) {
+            hor = "FOLGA / FERIADO";
+            serv = "—";
+            obs = "Feriado Oficial";
+            rowClass = "col-feriado";
+          }
 
           body.innerHTML += `
-            <tr class="${fds ? 'col-fds' : ''}">
+            <tr class="${rowClass}">
               <td><b>${dtFmt}</b></td>
               <td>${diasSemana[dt.getDay()]}</td>
-              <td>${fds ? 'FOLGA' : '08h às 17h'}</td>
-              <td><b>${fds ? '—' : 'EQUIPE ADMINISTRATIVA / ENFERMAGEM'}</b></td>
-              <td>-</td>
+              <td>${hor}</td>
+              <td>${serv}</td>
+              <td>${obs}</td>
             </tr>
           `;
         }
