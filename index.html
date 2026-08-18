@@ -79,8 +79,9 @@
 
     .st-i { background-color: #fef08a; font-weight: bold; color: #854d0e; }
     .st-fol { background-color: #dcfce7; color: #166534; }
+    .st-adm { background-color: #e0f2fe; font-weight: bold; color: #0369a1; }
     .col-fds { background-color: #e2e8f0 !important; font-weight: bold; }
-    .col-feriado { background-color: #fecaca !important; color: #991b1b !weight: bold; }
+    .col-feriado { background-color: #fecaca !important; color: #991b1b !important; font-weight: bold; }
 
     .header-relatorio-impressao { display: none; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
     .header-relatorio-impressao .rel-container { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
@@ -112,6 +113,7 @@
 
       .st-i { background-color: #fef08a !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .st-fol { background-color: #ffffff !important; color: #000 !important; -webkit-print-color-adjust: exact; }
+      .st-adm { background-color: #e0f2fe !important; color: #000 !important; -webkit-print-color-adjust: exact; }
       .col-fds { background-color: #e2e8f0 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
       .col-feriado { background-color: #fecaca !important; color: #000 !important; -webkit-print-color-adjust: exact; }
 
@@ -204,19 +206,19 @@
       <div class="form-group area-gestor-filtro" style="display:none;">
         <label>Regime Padrão da Escala</label>
         <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
-          <option value="24x96">Escala Operacional 24x96</option>
-          <option value="24x72">Escala Operacional 24x72</option>
+          <option value="24x96">Escala Operacional 24x96 (Padrão 5 Duplas)</option>
+          <option value="24x72">Escala Operacional 24x72 (Acelerada 4 Duplas)</option>
           <option value="40h">Escala Administrativa 40h (Seg - Sex)</option>
-          <option value="coren">Matriz Oficial COREN</option>
-          <option value="CUSTOM">Cadastrar Nova Escala...</option>
+          <option value="coren">Matriz Oficial COREN (Vinculada à Escala Ativa)</option>
+          <option value="CUSTOM">Cadastrar Nova Escala Personalizada...</option>
         </select>
       </div>
       <div class="form-group area-gestor-filtro" id="grpGeradorCustom" style="display:none;">
-        <label>Horas Trabalho x Folga</label>
+        <label>Horas Trabalho x Horas Folga</label>
         <div style="display:flex; gap:5px; align-items:center;">
-          <input type="number" id="genHorasTrab" value="12" style="width:60px;" onchange="renderizarEscalas()">
+          <input type="number" id="genHorasTrab" value="24" style="width:65px;" onchange="renderizarEscalas()">
           <span>x</span>
-          <input type="number" id="genHorasFolga" value="36" style="width:60px;" onchange="renderizarEscalas()">
+          <input type="number" id="genHorasFolga" value="48" style="width:65px;" onchange="renderizarEscalas()">
         </div>
       </div>
 
@@ -408,7 +410,7 @@
             <option value="24x96">24x96 (Manter 24x96 com Substituto Escalado)</option>
             <option value="24x72_CATEGORIA">24x72 (Rodízio Acelerado Apenas para a Categoria)</option>
             <option value="24x72_GERAL">24x72 (Rodízio Acelerado para Toda a Unidade)</option>
-            <option value="CUSTOM">Outra Escala (Personalizado)</option>
+            <option value="CUSTOM">Outra Escala Personalizada...</option>
           </select>
         </div>
         <div class="form-group" id="grpAfastCustom" style="display:none;">
@@ -1450,7 +1452,121 @@
       });
     }
 
-    // MOTOR DE ESCALAS INTEGRADO
+    // HELPER: CALCULA A QUEM PERTENCE O PLANTÃO EM UM DIA ESPECÍFICO
+    function calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao) {
+      const dataBase = new Date(dataBaseStr + "T00:00:00");
+      const dtAtual = new Date(dtIso + "T00:00:00");
+      
+      const diffTime = dtAtual.getTime() - dataBase.getTime();
+      const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+
+      if (diasCorridos < 0) {
+        return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
+      }
+
+      let modCiclo = 5; // Padrão 24x96
+      if (regimePadrao === "24x72") modCiclo = 4;
+      if (regimePadrao === "CUSTOM") {
+        const ht = Number(document.getElementById("genHorasTrab")?.value || 24);
+        const hf = Number(document.getElementById("genHorasFolga")?.value || 48);
+        modCiclo = Math.max(1, Math.round((ht + hf) / 24));
+      }
+
+      // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA CONTINUO
+      const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio);
+      const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && a.regime.includes("Categoria") && dtIso >= a.inicio);
+
+      let cond = "";
+      let tec = "";
+      let obsCond = "";
+      let obsTec = "";
+
+      // CALCULO CONDUTORES
+      if (afCond) {
+        const condutoresAtivos = colaboradores.filter(c => c.funcao.includes("Condutor") && c.nome !== afCond.servidor);
+        if (condutoresAtivos.length > 0) {
+          const dtIniAf = new Date(afCond.inicio + "T00:00:00");
+          const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
+          if (diffAf >= 0) {
+            const idxCont = diffAf % condutoresAtivos.length;
+            cond = condutoresAtivos[idxCont].nome;
+            obsCond = "Rodízio 24x72 Categoria";
+          }
+        }
+      }
+
+      if (!cond) {
+        const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+        cond = duplasPadrao[eqIndex % duplasPadrao.length].cond;
+      }
+
+      // CALCULO TÉCNICOS DE ENFERMAGEM
+      if (afTec) {
+        const tecsAtivos = colaboradores.filter(c => (c.funcao.includes("Técnic") || c.funcao.includes("Enfermeir")) && !c.funcao.includes("Coordenadora") && !c.funcao.includes("Master") && c.nome !== afTec.servidor);
+        if (tecsAtivos.length > 0) {
+          const dtIniAf = new Date(afTec.inicio + "T00:00:00");
+          const diffAf = Math.floor((dtAtual.getTime() - dtIniAf.getTime()) / (1000 * 3600 * 24));
+          if (diffAf >= 0) {
+            const idxCont = diffAf % tecsAtivos.length;
+            tec = tecsAtivos[idxCont].nome;
+            obsTec = "Rodízio 24x72 Categoria";
+          }
+        }
+      }
+
+      if (!tec) {
+        const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
+        tec = duplasPadrao[eqIndex % duplasPadrao.length].tec;
+      }
+
+      // 2. APLICA AFASTAMENTOS PONTUAIS COM SUBSTITUTOS
+      let obs = obsCond || obsTec || "-";
+
+      afastamentos.forEach(atestado => {
+        if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
+          const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
+
+          if (cond === atestado.servidor) {
+            if (substDia && substDia !== "A DEFINIR") {
+              cond = `${substDia} (Subst.)`;
+              obs = `Cobertura: ${atestado.servidor} (Atest.)`;
+            } else if (!atestado.regime.includes("Categoria")) {
+              cond = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
+              obs = `Atestado: ${atestado.servidor}`;
+            }
+          }
+
+          if (tec === atestado.servidor) {
+            if (substDia && substDia !== "A DEFINIR") {
+              tec = `${substDia} (Subst.)`;
+              obs = `Cobertura: ${atestado.servidor} (Atest.)`;
+            } else if (!atestado.regime.includes("Categoria")) {
+              tec = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
+              obs = `Atestado: ${atestado.servidor}`;
+            }
+          }
+        }
+      });
+
+      // 3. APLICA TROCAS APROVADAS
+      const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
+      if (trocaAprovada) {
+        const strPeriodo = trocaAprovada.periodo ? ` (${formatarPeriodo(trocaAprovada.periodo)})` : '';
+        if (trocaAprovada.dataMinha === dtIso) {
+          if (cond.includes(trocaAprovada.solicitante)) cond = `${trocaAprovada.substituto} (Subst.)`;
+          if (tec.includes(trocaAprovada.solicitante)) tec = `${trocaAprovada.substituto} (Subst.)`;
+          obs = `Troca Aprovada #${trocaAprovada.id}${strPeriodo}`;
+        } else if (trocaAprovada.dataDevolucao === dtIso) {
+          if (cond.includes(trocaAprovada.substituto)) cond = `${trocaAprovada.solicitante} (Devoluç.)`;
+          if (tec.includes(trocaAprovada.substituto)) tec = `${trocaAprovada.solicitante} (Devoluç.)`;
+          obs = `Devolução de Troca #${trocaAprovada.id}${strPeriodo}`;
+        }
+      }
+
+      return { cond, tec, obs };
+    }
+
+    // MOTOR DE ESCALAS INTEGRADO (OPERACIONAL, 40H E MATRIZ COREN)
     function renderizarEscalas() {
       const mesAno = document.getElementById("escalaMesAno").value;
       const dataBaseStr = document.getElementById("escalaDataBase").value;
@@ -1459,9 +1575,8 @@
       if (!mesAno || !dataBaseStr) return;
 
       const [ano, mes] = mesAno.split("-").map(Number);
-      const dataBase = new Date(dataBaseStr + "T00:00:00");
-
       const mesesNomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+      
       const elImp = document.getElementById("tituloEscalaImpressao");
       if (elImp) elImp.innerText = `ESCALA OPERACIONAL MENSAL (${regimePadrao.toUpperCase()}) — ${mesesNomes[mes - 1]} DE ${ano}`;
 
@@ -1484,81 +1599,16 @@
           const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
           const fds = (dtAtual.getDay() === 0 || dtAtual.getDay() === 6);
 
-          const diffTime = dtAtual.getTime() - dataBase.getTime();
-          const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
-
-          const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
-          const eqOriginal = duplasPadrao[eqIndex];
-
-          let cond = eqOriginal.cond;
-          let tec = eqOriginal.tec;
-          let obs = "-";
-
-          if (diasCorridos < 0) {
-            cond = "FORA DA SEQUÊNCIA";
-            tec = "FORA DA SEQUÊNCIA";
-            obs = "Data anterior à Data-Base";
-          } else {
-            afastamentos.forEach(atestado => {
-              if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
-                const is2472Cat = atestado.regime.includes("Categoria");
-                const is2472Geral = atestado.regime.includes("Unidade Geral") || atestado.regime === "24x72";
-
-                const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
-
-                if (cond === atestado.servidor) {
-                  if (is2472Cat && atestado.funcao.includes("Condutor")) {
-                    const condutoresAtivos = colaboradores.filter(c => c.funcao.includes("Condutor") && c.nome !== atestado.servidor);
-                    const idx4 = Math.abs(diasCorridos) % condutoresAtivos.length;
-                    cond = `${condutoresAtivos[idx4].nome} (Rodízio 24x72)`;
-                    obs = `<span style="color:#0284c7; font-weight:bold;">Escala 24x72 Isolada (Condutores)</span>`;
-                  } else if (substDia && substDia !== "A DEFINIR") {
-                    cond = `${substDia} (Subst.)`;
-                    obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
-                  } else {
-                    cond = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
-                    obs = `<span style="color:#dc2626; font-weight:bold;">Atestado: ${atestado.servidor}</span>`;
-                  }
-                }
-
-                if (tec === atestado.servidor) {
-                  if (is2472Cat && (atestado.funcao.includes("Técnic") || atestado.funcao.includes("Enfermeir"))) {
-                    const tecsAtivos = colaboradores.filter(c => (c.funcao.includes("Técnic") || c.funcao.includes("Enfermeir")) && c.nome !== atestado.servidor);
-                    const idx4 = Math.abs(diasCorridos) % tecsAtivos.length;
-                    tec = `${tecsAtivos[idx4].nome} (Rodízio 24x72)`;
-                    obs = `<span style="color:#0284c7; font-weight:bold;">Escala 24x72 Isolada (Técnicos)</span>`;
-                  } else if (substDia && substDia !== "A DEFINIR") {
-                    tec = `${substDia} (Subst.)`;
-                    obs = `<span style="color:#16a34a; font-weight:bold;">Cobertura: ${atestado.servidor} (Atest.)</span>`;
-                  } else {
-                    tec = `<span style="color:#dc2626; font-weight:bold;">SUBSTITUTO A DEFINIR</span>`;
-                    obs = `<span style="color:#dc2626; font-weight:bold;">Atestado: ${atestado.servidor}</span>`;
-                  }
-                }
-              }
-            });
-
-            const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
-            if (trocaAprovada) {
-              const strPeriodo = trocaAprovada.periodo ? ` (${formatarPeriodo(trocaAprovada.periodo)})` : '';
-              if (trocaAprovada.dataMinha === dtIso) {
-                cond = `${trocaAprovada.substituto} (Subst.)`;
-                obs = `<span style="color:#d97706; font-weight:bold;">Troca Aprovada #${trocaAprovada.id}${strPeriodo}</span>`;
-              } else if (trocaAprovada.dataDevolucao === dtIso) {
-                cond = `${trocaAprovada.solicitante} (Devoluç.)`;
-                obs = `<span style="color:#16a34a; font-weight:bold;">Devolução de Troca #${trocaAprovada.id}${strPeriodo}</span>`;
-              }
-            }
-          }
+          const resDia = calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao);
 
           body.innerHTML += `
             <tr class="${fds ? 'col-fds' : ''}">
               <td><b>${dtFmt}</b></td>
               <td>${diasSemana[dtAtual.getDay()]}</td>
               <td>07h às 07h</td>
-              <td><b>${cond}</b></td>
-              <td><b>${tec}</b></td>
-              <td>${obs}</td>
+              <td><b>${resDia.cond}</b></td>
+              <td><b>${resDia.tec}</b></td>
+              <td>${resDia.obs}</td>
             </tr>
           `;
         }
@@ -1614,24 +1664,34 @@
         colaboradores.forEach(c => {
           let regExibido = c.coren !== "N/A" ? c.coren : c.cnh;
           let line = `<tr><td style="text-align:left;"><b>${c.nome}</b></td><td>${regExibido}</td><td>${c.funcao}</td>`;
-          
+          const eh40h = c.funcao.includes("Coordenadora") || c.funcao.includes("Administrativo");
+
           for (let d = 1; d <= diasNoMes; d++) {
             const dtAtual = new Date(ano, mes - 1, d);
             const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const fdsClass = (dtAtual.getDay() === 0 || dtAtual.getDay() === 6) ? "col-fds" : "";
-            
-            const diffTime = dtAtual.getTime() - dataBase.getTime();
-            const diasCorridos = Math.floor(diffTime / (1000 * 3600 * 24));
+            const ehFds = (dtAtual.getDay() === 0 || dtAtual.getDay() === 6);
+            const ehFeriado = feriadosOficiaisNacionais.includes(dtIso);
+            const fdsClass = ehFds ? "col-fds" : "";
 
-            const atestado = afastamentos.find(a => a.servidor === c.nome && dtIso >= a.inicio && dtIso <= a.fim);
-
-            if (atestado) {
-              line += `<td style="background-color:#fee2e2; color:#b91c1c; font-weight:bold;">ATEST</td>`;
+            if (eh40h) {
+              if (ehFds || ehFeriado) {
+                line += `<td class="st-fol ${ehFeriado ? 'col-feriado' : fdsClass}">FOL</td>`;
+              } else {
+                line += `<td class="st-adm">ADM</td>`;
+              }
             } else {
-              const idDupla = c.idDupla !== undefined ? c.idDupla : (c.id % 5);
-              const eqDia = ((diasCorridos % 5) + 5) % 5;
-              const ehPlantao = (eqDia === idDupla);
-              line += `<td class="${ehPlantao ? 'st-i' : 'st-fol'} ${fdsClass}">${ehPlantao ? 'I' : 'FOL'}</td>`;
+              const resDia = calcularEscalaNoDia(dtIso, dataBaseStr, "24x96");
+              const ehPlantaoCond = resDia.cond.includes(c.nome);
+              const ehPlantaoTec = resDia.tec.includes(c.nome);
+              const atestado = afastamentos.find(a => a.servidor === c.nome && dtIso >= a.inicio && dtIso <= a.fim);
+
+              if (atestado) {
+                line += `<td style="background-color:#fee2e2; color:#b91c1c; font-weight:bold;">ATEST</td>`;
+              } else if (ehPlantaoCond || ehPlantaoTec) {
+                line += `<td class="st-i ${fdsClass}">I</td>`;
+              } else {
+                line += `<td class="st-fol ${fdsClass}">FOL</td>`;
+              }
             }
           }
           line += `</tr>`;
