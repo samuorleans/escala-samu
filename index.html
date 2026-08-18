@@ -4,19 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema Integrado de Gestão de Escalas e Trocas — SAMU 192</title>
-  <!-- BIBLIOTECA OFICIAL DO SUPABASE (NUVEM) -->
+  <!-- BIBLIOTECAS SUPABASE E EMAILJS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
     body { margin: 0; padding: 15px; background-color: #f1f5f9; color: #0f172a; }
 
-    /* TELA DE LOGIN OVERLAY */
-    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.88); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    .box-login { background: #fff; padding: 25px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
+    /* OVERLAY E MODAL DE LOGIN */
+    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.88); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+    .box-login { background: #fff; padding: 25px; border-radius: 10px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; position: relative; }
     .box-login h2 { color: #b71c1c; margin-top: 0; font-size: 18px; text-transform: uppercase; }
     .box-login input { width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    .btn-fechar-modal { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b; font-weight: bold; }
 
-    header { background: #b71c1c; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    header { background: #b71c1c; color: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     header h1 { margin: 0; font-size: 20px; text-transform: uppercase; }
     .user-info { font-size: 13px; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
 
@@ -31,7 +34,6 @@
     .form-group { display: flex; flex-direction: column; gap: 4px; }
     label { font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; }
     input, select { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; outline: none; }
-    input:disabled, select:disabled { background-color: #e2e8f0; cursor: not-allowed; }
 
     .btn { padding: 8px 14px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; }
     .btn-primary { background: #2563eb; }
@@ -93,21 +95,18 @@
 </head>
 <body class="modo-retrato">
 
-  <!-- MODAL DE LOGIN POR CPF E SENHA -->
+  <!-- MODAL DE LOGIN DE ACESSO RESTRITO -->
   <div id="modalLogin">
     <div class="box-login">
+      <button class="btn-fechar-modal" onclick="fecharModalLogin()">✕</button>
       <h2>SAMU 192 — Acesso Restrito</h2>
-      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar o sistema.</p>
+      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar trocas e gestão.</p>
       
       <form id="formLogin" onsubmit="autenticarUsuario(event)">
         <input type="text" id="loginCPF" placeholder="CPF (Ex: 000.000.000-00)" required>
         <input type="password" id="loginSenha" placeholder="Senha de Acesso" required>
         <button class="btn btn-primary" type="submit" style="width:100%; padding:10px;">🔑 Entrar no Sistema</button>
       </form>
-      
-      <div style="margin-top:12px; font-size:11px; color:#64748b;">
-        Dúvidas de acesso? Contate a Coordenação USB 011.
-      </div>
     </div>
   </div>
 
@@ -118,20 +117,129 @@
     </div>
     <div class="user-info">
       <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
-      <span id="labelUsuarioConectado" style="font-weight:bold;">Usuário: Não Conectado</span>
-      <button class="btn btn-danger" style="padding:3px 8px; font-size:10px;" onclick="fazerLogout()">Sair</button>
+      <span id="labelUsuarioConectado" style="font-weight:bold;">Visualização Pública (Consulta)</span>
+      
+      <button class="btn btn-primary" id="btnAbrirLogin" onclick="abrirModalLogin()">🔑 Fazer Login / Restrito</button>
+      <button class="btn btn-danger" id="btnSair" style="display:none;" onclick="fazerLogout()">Sair</button>
     </div>
   </header>
 
   <div class="nav-tabs no-print">
+    <button class="tab-btn active" id="btnTabEscalas" onclick="trocarAba('escalas')">📅 Consulta de Escalas Pública</button>
+    <button class="tab-btn" id="btnTabTrocas" style="display:none;" onclick="trocarAba('trocas')">🔄 Minhas Trocas de Plantão</button>
     <button class="tab-btn" id="btnTabColaboradores" style="display:none;" onclick="trocarAba('colaboradores')">👥 Colaboradores</button>
     <button class="tab-btn" id="btnTabAfastamentos" style="display:none;" onclick="trocarAba('afastamentos')">🏥 Licenças e Escala Temporária</button>
-    <button class="tab-btn active" id="btnTabEscalas" onclick="trocarAba('escalas')">📅 Gerador de Escalas</button>
-    <button class="tab-btn" id="btnTabTrocas" onclick="trocarAba('trocas')">🔄 Trocas de Plantão</button>
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <!-- ABA 1: CADASTRO DE COLABORADORES (EXCLUSIVO COORDENADOR / MASTER) -->
+  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA) -->
+  <div id="abaEscalas" class="card">
+    <div class="grid-form no-print">
+      <div class="form-group">
+        <label>Mês / Ano da Escala</label>
+        <input type="month" id="escalaMesAno" value="2026-09" onchange="renderizarEscalas()">
+      </div>
+      <div class="form-group">
+        <label>Data-Base Inicial da Sequência</label>
+        <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas()">
+      </div>
+      <div class="form-group">
+        <label>Regime Padrão da Escala</label>
+        <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
+          <option value="24x96">Escala Operacional 24x96</option>
+          <option value="24x72">Escala Operacional 24x72</option>
+          <option value="40h">Escala Administrativa 40h</option>
+          <option value="coren">Matriz Oficial COREN</option>
+          <option value="CUSTOM">Cadastrar Nova Escala (Personalizada)...</option>
+        </select>
+      </div>
+      <div class="form-group" id="grpGeradorCustom" style="display:none;">
+        <label>Horas Trabalho x Folga</label>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <input type="number" id="genHorasTrab" value="12" style="width:60px;" onchange="renderizarEscalas()">
+          <span>x</span>
+          <input type="number" id="genHorasFolga" value="36" style="width:60px;" onchange="renderizarEscalas()">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
+      <button class="btn btn-success" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
+    </div>
+
+    <div class="header-institucional">
+      <h2>ESTADO DE SANTA CATARINA — SECRETARIA MUNICIPAL DE SAÚDE DE ORLEANS</h2>
+      <h3>UNIDADE DE SUPORTE BÁSICO DE ATENDIMENTO MÓVEL — USB 011 ORLEANS</h3>
+      <p id="tituloEscalaImpressao">ESCALA OPERACIONAL MENSAL — SETEMBRO DE 2026</p>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 10px;">
+      <table id="tblGerada">
+        <thead id="headTblGerada"></thead>
+        <tbody id="bodyTblGerada"></tbody>
+      </table>
+    </div>
+
+    <div class="rodape-assinaturas">
+      <div class="campo-assinatura">Responsável Técnico (RT) Enfermagem / COREN-SC</div>
+      <div class="campo-assinatura">Coordenação Operacional SAMU 192</div>
+    </div>
+  </div>
+
+  <!-- ABA 2: TROCAS DE PLANTÃO (FILTRADAS PELO USUÁRIO LOGADO) -->
+  <div id="abaTrocas" class="card" style="display:none;">
+    <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
+    <form id="formTroca" onsubmit="solicitarTroca(event)">
+      <input type="hidden" id="trocaIdEdit">
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Data do Meu Plantão</label>
+          <input type="date" id="trocaDataMinha" required>
+        </div>
+        <div class="form-group">
+          <label>Substituto (Quem vai cobrir)</label>
+          <select id="trocaSubstituto" required></select>
+        </div>
+        <div class="form-group">
+          <label>Tipo de Troca</label>
+          <select id="trocaTipo" onchange="toggleTipoTroca()">
+            <option value="Direta">Troca por Troca (Com Devolução Definida)</option>
+            <option value="A Haver">A Haver (Sem Data Definida)</option>
+          </select>
+        </div>
+        <div class="form-group" id="grpDataDevolucao">
+          <label>Data de Devolução *</label>
+          <input type="date" id="trocaDataDevolucao" required>
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Justificativa / Motivo</label>
+          <input type="text" id="trocaMotivo" placeholder="Motivo da solicitação de troca" required>
+        </div>
+        <button class="btn btn-warning" type="submit" id="btnSalvarTroca">📩 Enviar Solicitação para a Nuvem</button>
+        <button class="btn btn-dark" type="button" id="btnCancelarTroca" style="display:none;" onclick="cancelarEdicaoTroca()">❌ Cancelar</button>
+      </div>
+    </form>
+
+    <h3 style="margin-top:25px;">Minhas Solicitações e Notificações Recebidas</h3>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>SOLICITANTE</th>
+            <th>DATA PLANTÃO</th>
+            <th>SUBSTITUTO</th>
+            <th>TIPO</th>
+            <th>DEVOLUÇÃO</th>
+            <th>MOTIVO</th>
+            <th>STATUS</th>
+            <th>AÇÕES / ACEITE</th>
+          </tr>
+        </thead>
+        <tbody id="tbTrocas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ABA 3: CADASTRO DE COLABORADORES (EXCLUSIVO MASTER/COORDENADOR) -->
   <div id="abaColaboradores" class="card" style="display:none;">
     <h3 id="tituloFormColaborador">Cadastrar / Editar Colaborador</h3>
     <form id="formColaborador" onsubmit="salvarColaborador(event)">
@@ -196,7 +304,7 @@
     </div>
   </div>
 
-  <!-- ABA 2: LICENÇAS E COBERTURA DIÁRIA (EXCLUSIVO COORDENADOR / MASTER) -->
+  <!-- ABA 4: LICENÇAS E COBERTURA DIÁRIA (EXCLUSIVO MASTER/COORDENADOR) -->
   <div id="abaAfastamentos" class="card" style="display:none;">
     <h3 id="tituloFormAfastamento">Registrar Licença e Cobertura Diária por Função</h3>
     <form id="formAfastamento" onsubmit="salvarAfastamento(event)">
@@ -268,117 +376,10 @@
     </div>
   </div>
 
-  <!-- ABA 3: GERADOR DE ESCALAS (DISPONÍVEL PARA TODOS) -->
-  <div id="abaEscalas" class="card">
-    <div class="grid-form no-print">
-      <div class="form-group">
-        <label>Mês / Ano da Escala</label>
-        <input type="month" id="escalaMesAno" value="2026-09" onchange="renderizarEscalas()">
-      </div>
-      <div class="form-group">
-        <label>Data-Base Inicial da Sequência</label>
-        <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas()">
-      </div>
-      <div class="form-group">
-        <label>Regime Padrão da Escala</label>
-        <select id="escalaRegime" onchange="toggleRegimeCustomGerador(this.value)">
-          <option value="24x96">Escala Operacional 24x96</option>
-          <option value="24x72">Escala Operacional 24x72</option>
-          <option value="40h">Escala Administrativa 40h</option>
-          <option value="coren">Matriz Oficial COREN</option>
-          <option value="CUSTOM">Cadastrar Nova Escala (Personalizada)...</option>
-        </select>
-      </div>
-      <div class="form-group" id="grpGeradorCustom" style="display:none;">
-        <label>Horas Trabalho x Folga</label>
-        <div style="display:flex; gap:5px; align-items:center;">
-          <input type="number" id="genHorasTrab" value="12" style="width:60px;" onchange="renderizarEscalas()">
-          <span>x</span>
-          <input type="number" id="genHorasFolga" value="36" style="width:60px;" onchange="renderizarEscalas()">
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="renderizarEscalas()">🔄 Gerar Escala</button>
-      <button class="btn btn-success" onclick="imprimirAjustado()">🖨️ Imprimir / PDF (1 Pag)</button>
-    </div>
-
-    <div class="header-institucional">
-      <h2>ESTADO DE SANTA CATARINA — SECRETARIA MUNICIPAL DE SAÚDE DE ORLEANS</h2>
-      <h3>UNIDADE DE SUPORTE BÁSICO DE ATENDIMENTO MÓVEL — USB 011 ORLEANS</h3>
-      <p id="tituloEscalaImpressao">ESCALA OPERACIONAL MENSAL — SETEMBRO DE 2026</p>
-    </div>
-
-    <div class="table-responsive" style="margin-top: 10px;">
-      <table id="tblGerada">
-        <thead id="headTblGerada"></thead>
-        <tbody id="bodyTblGerada"></tbody>
-      </table>
-    </div>
-
-    <div class="rodape-assinaturas">
-      <div class="campo-assinatura">Responsável Técnico (RT) Enfermagem / COREN-SC</div>
-      <div class="campo-assinatura">Coordenação Operacional SAMU 192</div>
-    </div>
-  </div>
-
-  <!-- ABA 4: TROCAS DE PLANTÃO (SOLICITAÇÃO PARA TODOS / ACEITE DO SUBSTITUTO) -->
-  <div id="abaTrocas" class="card" style="display:none;">
-    <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
-    <form id="formTroca" onsubmit="solicitarTroca(event)">
-      <input type="hidden" id="trocaIdEdit">
-      <div class="grid-form">
-        <div class="form-group">
-          <label>Data do Meu Plantão</label>
-          <input type="date" id="trocaDataMinha" required>
-        </div>
-        <div class="form-group">
-          <label>Substituto (Quem vai cobrir)</label>
-          <select id="trocaSubstituto" required></select>
-        </div>
-        <div class="form-group">
-          <label>Tipo de Troca</label>
-          <select id="trocaTipo" onchange="toggleTipoTroca()">
-            <option value="Direta">Troca por Troca (Com Devolução Definida)</option>
-            <option value="A Haver">A Haver (Sem Data Definida)</option>
-          </select>
-        </div>
-        <div class="form-group" id="grpDataDevolucao">
-          <label>Data de Devolução *</label>
-          <input type="date" id="trocaDataDevolucao" required>
-        </div>
-        <div class="form-group" style="flex:2;">
-          <label>Justificativa / Motivo</label>
-          <input type="text" id="trocaMotivo" placeholder="Motivo da solicitação de troca" required>
-        </div>
-        <button class="btn btn-warning" type="submit" id="btnSalvarTroca">📩 Enviar Solicitação para a Nuvem</button>
-        <button class="btn btn-dark" type="button" id="btnCancelarTroca" style="display:none;" onclick="cancelarEdicaoTroca()">❌ Cancelar</button>
-      </div>
-    </form>
-
-    <h3 style="margin-top:25px;">Painel de Solicitações e Histórico Auditável</h3>
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>SOLICITANTE</th>
-            <th>DATA PLANTÃO</th>
-            <th>SUBSTITUTO</th>
-            <th>TIPO</th>
-            <th>DEVOLUÇÃO</th>
-            <th>MOTIVO</th>
-            <th>STATUS</th>
-            <th>AÇÕES / ACEITE</th>
-          </tr>
-        </thead>
-        <tbody id="tbTrocas"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ABA 5: PAINEL ADMINISTRADOR (EXCLUSIVO COORDENADOR / MASTER) -->
+  <!-- ABA 5: PAINEL ADMINISTRADOR (EXCLUSIVO MASTER/COORDENADOR) -->
   <div id="abaAdmin" class="card" style="display:none;">
-    <h3>⚙️ Gestão Administrativa, Cancelamento e Auditoria de Trocas</h3>
-    <p style="font-size: 12px; color: #475569;">Como Administrador / Coordenador, você pode alterar datas, substituir nomes ou cancelar/suspender trocas já aprovadas mediante justificativa.</p>
+    <h3>⚙️ Gestão Administrativa, Cancelamento e Auditoria Geral de Trocas</h3>
+    <p style="font-size: 12px; color: #475569;">Como Administrador / Coordenador, você possui autoridade para reajustar ou suspender qualquer troca enviada.</p>
 
     <div class="table-responsive" style="margin-top: 15px;">
       <table>
@@ -442,11 +443,18 @@
       colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
-    // AUTENTICAÇÃO POR CPF E CONTROLE DE NÍVEL DE ACESSO
+    // GESTÃO DE MODAL DE LOGIN E PERMISSÕES
+    function abrirModalLogin() {
+      document.getElementById("modalLogin").style.display = "flex";
+    }
+
+    function fecharModalLogin() {
+      document.getElementById("modalLogin").style.display = "none";
+    }
+
     function autenticarUsuario(e) {
       e.preventDefault();
       const cpfDig = document.getElementById("loginCPF").value.trim().replace(/\D/g, '');
-      const senhaDig = document.getElementById("loginSenha").value.trim();
 
       const usuarioEncontrado = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig);
 
@@ -458,45 +466,52 @@
       usuarioLogado = usuarioEncontrado;
       localStorage.setItem("samu_user_logado", JSON.stringify(usuarioLogado));
       
-      document.getElementById("modalLogin").style.display = "none";
-      document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome} (${usuarioLogado.funcao})`;
-      
+      fecharModalLogin();
       aplicarPermissoes();
       renderizarTudo();
     }
 
     function aplicarPermissoes() {
-      if (!usuarioLogado) return;
+      if (!usuarioLogado) {
+        document.getElementById("labelUsuarioConectado").innerText = "Visualização Pública (Consulta)";
+        document.getElementById("btnAbrirLogin").style.display = "inline-flex";
+        document.getElementById("btnSair").style.display = "none";
+        document.getElementById("btnTabTrocas").style.display = "none";
+        document.getElementById("btnTabColaboradores").style.display = "none";
+        document.getElementById("btnTabAfastamentos").style.display = "none";
+        document.getElementById("btnTabAdmin").style.display = "none";
+        trocarAba('escalas');
+        return;
+      }
 
       const f = usuarioLogado.funcao.toLowerCase();
       const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
 
-      // Botoes do Menu
+      document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome} (${usuarioLogado.funcao})`;
+      document.getElementById("btnAbrirLogin").style.display = "none";
+      document.getElementById("btnSair").style.display = "inline-flex";
+
+      document.getElementById("btnTabTrocas").style.display = "inline-block";
       document.getElementById("btnTabColaboradores").style.display = ehGestor ? "inline-block" : "none";
       document.getElementById("btnTabAfastamentos").style.display = ehGestor ? "inline-block" : "none";
       document.getElementById("btnTabAdmin").style.display = ehGestor ? "inline-block" : "none";
 
-      // Abre por padrao a aba de escalas
-      trocarAba('escalas');
+      trocarAba('trocas');
     }
 
     function fazerLogout() {
       localStorage.removeItem("samu_user_logado");
       usuarioLogado = null;
-      document.getElementById("modalLogin").style.display = "flex";
-      document.getElementById("labelUsuarioConectado").innerText = "Usuário: Não Conectado";
+      aplicarPermissoes();
+      renderizarTudo();
     }
 
     function verificarSessao() {
       const sessaoSalva = localStorage.getItem("samu_user_logado");
       if (sessaoSalva) {
         usuarioLogado = JSON.parse(sessaoSalva);
-        document.getElementById("modalLogin").style.display = "none";
-        document.getElementById("labelUsuarioConectado").innerText = `Usuário: ${usuarioLogado.nome}`;
-        aplicarPermissoes();
-      } else {
-        document.getElementById("modalLogin").style.display = "flex";
       }
+      aplicarPermissoes();
     }
 
     // CARREGAMENTO E SINCRONIZAÇÃO NUVEM
@@ -507,7 +522,6 @@
           if (cData && cData.length > 0) colaboradores = cData;
           else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
 
-          // Garante que seu perfil seja Master caso venha da nuvem antigo
           const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
           if (me) me.funcao = "Administrativo / Master";
 
@@ -586,21 +600,26 @@
       const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
       const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
 
+      if (!usuarioLogado && aba !== 'escalas') {
+        abrirModalLogin();
+        return;
+      }
+
       if (!ehGestor && (aba === 'colaboradores' || aba === 'afastamentos' || aba === 'admin')) {
         alert("Acesso restrito à Coordenação e Administração.");
         return;
       }
 
-      document.getElementById("abaColaboradores").style.display = (aba === 'colaboradores') ? "block" : "none";
-      document.getElementById("abaAfastamentos").style.display = (aba === 'afastamentos') ? "block" : "none";
       document.getElementById("abaEscalas").style.display = (aba === 'escalas') ? "block" : "none";
       document.getElementById("abaTrocas").style.display = (aba === 'trocas') ? "block" : "none";
+      document.getElementById("abaColaboradores").style.display = (aba === 'colaboradores') ? "block" : "none";
+      document.getElementById("abaAfastamentos").style.display = (aba === 'afastamentos') ? "block" : "none";
       document.getElementById("abaAdmin").style.display = (aba === 'admin') ? "block" : "none";
 
-      document.getElementById("btnTabColaboradores").classList.toggle("active", aba === 'colaboradores');
-      document.getElementById("btnTabAfastamentos").classList.toggle("active", aba === 'afastamentos');
       document.getElementById("btnTabEscalas").classList.toggle("active", aba === 'escalas');
       document.getElementById("btnTabTrocas").classList.toggle("active", aba === 'trocas');
+      document.getElementById("btnTabColaboradores").classList.toggle("active", aba === 'colaboradores');
+      document.getElementById("btnTabAfastamentos").classList.toggle("active", aba === 'afastamentos');
       document.getElementById("btnTabAdmin").classList.toggle("active", aba === 'admin');
     }
 
@@ -627,7 +646,7 @@
       window.print();
     }
 
-    // CADASTRO COLABORADORES (GESTOR / MASTER)
+    // CADASTRO COLABORADORES
     async function salvarColaborador(e) {
       e.preventDefault();
       const idEdit = document.getElementById("cadId").value;
@@ -756,18 +775,15 @@
       document.getElementById("grpAfastCustom").style.display = (tipo === "CUSTOM") ? "flex" : "none";
     }
 
-    // REGRA DE VERIFICAÇÃO DE CATEGORIA - INCLUI SEU NOME EM LICENÇAS DE CONDUTOR
     function ehMesmaFuncaoExata(funcaoAfastado, funcaoColega) {
       const fAf = funcaoAfastado.toLowerCase();
       const fCol = funcaoColega.toLowerCase();
 
-      // Se o afastado for Condutor, permite Condutor Socorrista e o perfil Administrativo/Master
       const afEhCondutor = fAf.includes("condutor");
       if (afEhCondutor) {
         return fCol.includes("condutor") || fCol.includes("master") || fCol.includes("administrativo");
       }
 
-      // Se o afastado for Técnico ou Enfermeiro
       const afEhTecnico = fAf.includes("técnic") || fAf.includes("enfermeir");
       if (afEhTecnico) {
         return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("condutor");
@@ -976,7 +992,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (EXIBIÇÃO FILTRADA POR USUÁRIO)
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1074,11 +1090,26 @@
       }
     }
 
+    // EXIBE SOMENTE AS TROCAS ONDE O USUÁRIO LOGADO É O SOLICITANTE OU SUBSTITUTO
     function renderizarTabelaTrocas() {
       const tb = document.getElementById("tbTrocas");
       if (!tb) return;
       tb.innerHTML = "";
-      trocas.forEach(t => {
+
+      const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+
+      // Filtra exclusivamente trocas pertencentes ao usuário (gestores visualizam tudo)
+      const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => 
+        usuarioLogado && (t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome)
+      );
+
+      if (trocasFiltradas.length === 0) {
+        tb.innerHTML = `<tr><td colspan="9" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca de plantão encontrada para o seu perfil.</td></tr>`;
+        return;
+      }
+
+      trocasFiltradas.forEach(t => {
         let stBadge = `<span class="badge badge-pendente">Pendente</span>`;
         if (t.status === "APROVADO") stBadge = `<span class="badge badge-aprovado">Aprovado</span>`;
         if (t.status === "RECUSADO") stBadge = `<span class="badge badge-recusado">Recusado</span>`;
@@ -1086,15 +1117,17 @@
 
         let acoes = "-";
         const ehSubstituto = usuarioLogado && (usuarioLogado.nome === t.substituto);
-        const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
-        const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master");
+        const ehSolicitante = usuarioLogado && (usuarioLogado.nome === t.solicitante);
 
-        if (t.status === "PENDENTE" && (ehSubstituto || ehGestor)) {
-          acoes = `
-            <button class="btn btn-info" onclick="editarTrocaSolicitante(${t.id})">✏️ Editar</button>
-            <button class="btn btn-success" onclick="responderTroca(${t.id}, true)">Aceitar</button>
-            <button class="btn btn-danger" onclick="responderTroca(${t.id}, false)">Recusar</button>
-          `;
+        if (t.status === "PENDENTE") {
+          if (ehSubstituto || ehGestor) {
+            acoes = `
+              <button class="btn btn-success" onclick="responderTroca(${t.id}, true)">Aceitar</button>
+              <button class="btn btn-danger" onclick="responderTroca(${t.id}, false)">Recusar</button>
+            `;
+          } else if (ehSolicitante) {
+            acoes = `<button class="btn btn-info" onclick="editarTrocaSolicitante(${t.id})">✏️ Editar</button>`;
+          }
         }
 
         tb.innerHTML += `
@@ -1113,7 +1146,7 @@
       });
     }
 
-    // PAINEL ADMINISTRADOR (EXCLUSIVO GESTOR / MASTER)
+    // PAINEL ADMINISTRADOR
     async function adminCancelarTroca(id) {
       const t = trocas.find(item => item.id === id);
       if (t) {
