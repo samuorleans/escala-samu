@@ -187,7 +187,7 @@
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (COM SIMULADOR INTELIGENTE DE QUADRO) -->
+  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS -->
   <div id="abaEscalas" class="card">
     <div class="grid-form no-print">
       <div class="form-group">
@@ -211,8 +211,8 @@
           <option value="24x72">24x72 (Rodízio Acelerado 4 Duplas)</option>
           <option value="24x48">24x48 (Rodízio Acelerado 3 Duplas)</option>
           <option value="24x24">24x24 (Rodízio Intensivo 2 Duplas)</option>
-          <option value="12x36">12x36 (Plantão 12h Diurno / Noturno)</option>
-          <option value="12x48">12x48 (Plantão 12h com Maior Descanso)</option>
+          <option value="12x36">12x36 (Plantão 12h Diurno / Noturno)</option>
+          <option value="12x48">12x48 (Plantão 12h com Maior Descanso)</option>
           <option value="40h">Escala Administrativa 40h (Seg - Sex)</option>
           <option value="coren">Matriz Oficial COREN (Visão Geral)</option>
           <option value="CUSTOM">Customizado (Trabalho x Folga)</option>
@@ -525,6 +525,16 @@
 </div>
 
   <script>
+    // INICIALIZAÇÃO DO EMAILJS COM A SUA PUBLIC KEY
+    (function() {
+      if (typeof emailjs !== 'undefined') {
+        emailjs.init("g3X1Q4SXuGXbXqHuB");
+      }
+    })();
+
+    const EMAILJS_SERVICE_ID = "service_929jaih";
+    const EMAILJS_TEMPLATE_ID = "template_r0yg20n";
+
     const SUPABASE_URL = "https://rcpgukslnlfptreiusff.supabase.co"; 
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcGd1a3NsbmxmcHRyZWl1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMDQ2MTYsImV4cCI6MjEwMjU4MDYxNn0.LgadTI7PwlLMBT5TbNkMncI0OfL22wjGAU_xanR4J6A"; 
     
@@ -568,6 +578,37 @@
     let colaboradores = [];
     let trocas = [];
     let afastamentos = [];
+
+    // FUNÇÃO PARA ENVIAR ALERTAS POR E-MAIL
+    function enviarAlertaEmailTroca(trocaObj) {
+      const destinatario = colaboradores.find(c => c.nome.trim().toLowerCase() === trocaObj.substituto.trim().toLowerCase());
+      
+      if (!destinatario || !destinatario.email || destinatario.email === "-" || !destinatario.email.includes("@")) {
+        console.warn(`O servidor substituto '${trocaObj.substituto}' não possui e-mail válido cadastrado na aba Colaboradores.`);
+        return;
+      }
+
+      const templateParams = {
+        email_destino: destinatario.email,
+        id_troca: trocaObj.id || "NOVA",
+        nome_solicitante: trocaObj.solicitante,
+        nome_substituto: trocaObj.substituto,
+        data_plantao: trocaObj.dataMinha ? trocaObj.dataMinha.split('-').reverse().join('/') : '-',
+        periodo: formatarPeriodo(trocaObj.periodo),
+        tipo_troca: trocaObj.tipo,
+        data_devolucao: (trocaObj.dataDevolucao && trocaObj.dataDevolucao !== "A HAVER") 
+          ? trocaObj.dataDevolucao.split('-').reverse().join('/') 
+          : "A HAVER",
+        motivo: trocaObj.motivo
+      };
+
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+        .then(function(response) {
+           console.log('Notificação de troca enviada por e-mail com sucesso!', response.status, response.text);
+        }, function(error) {
+           console.error('Erro ao enviar notificação de troca via EmailJS:', error);
+        });
+    }
 
     function ordenarAlfabeticamente() {
       colaboradores.sort((a, b) => {
@@ -1380,7 +1421,6 @@
       alterarRegimeVisual(val);
     }
 
-    // DIAGNÓSTICO INTELIGENTE DE QUADRO E VIABILIDADE
     function validarQuadroSimulacao() {
       const regime = document.getElementById("escalaRegime").value;
       if (regime === "24x96" || regime === "40h" || regime === "coren") return true;
@@ -1397,7 +1437,7 @@
       }
 
       const equipesNecessarias = Math.max(1, Math.round((ht + hf) / ht));
-      const equipesDisponiveis = duplasPadrao.length; // 5 Duplas
+      const equipesDisponiveis = duplasPadrao.length;
 
       if (equipesNecessarias === equipesDisponiveis) {
         alert(`✅ SIMULAÇÃO VIÁVEL!\n\n• Regime Escolhido: ${ht}x${hf}\n• Necessidade Operacional: ${equipesNecessarias} duplas/equipes.\n• Quadro Atual: ${equipesDisponiveis} duplas na USB 11.\n\nO ciclo fecha em 100% sem sobras ou furos na cobertura.`);
@@ -1488,7 +1528,9 @@
             alert("Erro ao atualizar troca online: " + error.message);
             return;
           }
-          alert("Solicitação de troca atualizada com sucesso!");
+          
+          enviarAlertaEmailTroca(trocas[idx]);
+          alert("Solicitação de troca atualizada com sucesso e e-mail enviado ao substituto!");
         }
       } else {
         const novaTrocaObj = {
@@ -1502,13 +1544,16 @@
           status: "PENDENTE"
         };
 
-        const { error } = await dbNuvem.from('trocas').insert([novaTrocaObj]);
+        const { data: insertedData, error } = await dbNuvem.from('trocas').insert([novaTrocaObj]).select();
         if (error) {
           alert("Erro ao enviar troca para o banco de dados online: " + error.message);
           return;
         }
 
-        alert(`Solicitação enviada! Visível para ${substitutoEscolhido} e para a Gestão.`);
+        const trocaSalva = (insertedData && insertedData.length > 0) ? insertedData[0] : novaTrocaObj;
+        enviarAlertaEmailTroca(trocaSalva);
+
+        alert(`Solicitação enviada com sucesso! Um e-mail de notificação foi disparado para ${substitutoEscolhido}.`);
       }
 
       cancelarEdicaoTroca();
@@ -1562,7 +1607,8 @@
         }
       }
 
-      alert("Data de devolução sugerida com sucesso! Aguardando confirmação.");
+      enviarAlertaEmailTroca(t);
+      alert("Data de devolução sugerida com sucesso! Notificação enviada por e-mail.");
       await carregarDados();
     }
 
@@ -1753,7 +1799,6 @@
       });
     }
 
-    // CÁLCULO INTELIGENTE DA ESCALA COM SUPORTE A TRANSIÇÕES E SIMULAÇÃO DE CARGAS DIVERSAS
     function calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao) {
       const dataBase = new Date(dataBaseStr + "T00:00:00");
       const dtAtual = new Date(dtIso + "T00:00:00");
@@ -1765,29 +1810,25 @@
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
-      // 1. Obter a dupla padrão oficial do 24x96 para o dia
       const eqIndex2496 = ((diasCorridosBase % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
       let cond = duplasPadrao[eqIndex2496].cond;
       let tec = duplasPadrao[eqIndex2496].tec;
       let obs = "-";
 
-      // 2. Parâmetros do Painel de Simulação/Transição
       const dtIniTrans = document.getElementById("simDataInicio") ? document.getElementById("simDataInicio").value : "";
       const dtFimTrans = document.getElementById("simDataFim") ? document.getElementById("simDataFim").value : "";
       const categoriaAplicada = document.getElementById("simAplicaCategoria") ? document.getElementById("simAplicaCategoria").value : "TODOS";
 
       const ehPeriodoTransicao = (regimePadrao !== '24x96' && regimePadrao !== '40h' && regimePadrao !== 'coren') && (dtIniTrans && dtFimTrans && dtIso >= dtIniTrans && dtIso <= dtFimTrans);
 
-      // 3. Aplicar Sequência do Regime Especial (se ativo no período)
       if (ehPeriodoTransicao) {
         const dtIniObj = new Date(dtIniTrans + "T00:00:00");
         const diffTrans = Math.floor((dtAtual.getTime() - dtIniObj.getTime()) / (1000 * 3600 * 24));
         
-        // Identificar qual dupla inicia na Data-Base do Período de Transição (baseado na 24x96)
         const diffTransBase = Math.floor((dtIniObj.getTime() - dataBase.getTime()) / (1000 * 3600 * 24));
         const idxDuplaInicioTrans = ((diffTransBase % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
 
-        let cicloDias = 5; // Padrão 24x96 (5 duplas)
+        let cicloDias = 5;
         if (regimePadrao === "24x72") cicloDias = 4;
         if (regimePadrao === "24x48") cicloDias = 3;
         if (regimePadrao === "24x24") cicloDias = 2;
@@ -1810,7 +1851,6 @@
         obs = `Simulação / Transição (${regimePadrao.toUpperCase()})`;
       }
 
-      // 4. Aplicar Licenças e Afastamentos Ativos
       const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
       const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
 
@@ -1836,7 +1876,6 @@
         }
       }
 
-      // Aplicar substitutos pontuais de atestados
       afastamentos.forEach(atestado => {
         if (dtIso >= atestado.inicio && dtIso <= atestado.fim) {
           const substDia = atestado.substitutosDiarios ? atestado.substitutosDiarios[dtIso] : null;
@@ -1864,7 +1903,6 @@
         }
       });
 
-      // 5. Aplicar Trocas Individuais Aprovadas (Suporte 12h Diurno e Noturno)
       const trocasAprovadas = trocas.filter(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
       
       if (trocasAprovadas.length > 0) {
