@@ -1495,16 +1495,16 @@
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
-      // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA CONTINUO
-      const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio);
-      const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio);
+      // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA (LIMITADO EXCLUSIVAMENTE AO PERÍODO DA LICENÇA)
+      const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
+      const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
 
       let cond = "";
       let tec = "";
       let obsCond = "";
       let obsTec = "";
 
-      // CALCULO CONDUTORES (LISTA OFICIAL FIXA COM DANIEL)
+      // CÁLCULO CONDUTORES DURANTE O PERÍODO DA LICENÇA
       if (afCond) {
         const condutoresOficiais = [
           "Vanderlei José Tasca",
@@ -1521,17 +1521,18 @@
           if (diffAf >= 0) {
             const idxCont = diffAf % condutoresAtivos.length;
             cond = condutoresAtivos[idxCont];
-            obsCond = "Rodízio 24x72 Categoria";
+            obsCond = "Rodízio 24x72 Categoria (Afastamento)";
           }
         }
       }
 
+      // FORA DA LICENÇA, VOLTA AO 24X96 NORMAL DA EQUIPE
       if (!cond) {
         const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
         cond = duplasPadrao[eqIndex % duplasPadrao.length].cond;
       }
 
-      // CALCULO TÉCNICOS DE ENFERMAGEM
+      // CÁLCULO TÉCNICOS DE ENFERMAGEM DURANTE O PERÍODO DA LICENÇA
       if (afTec) {
         const tecsOficiais = [
           "Suandre Adão Machado",
@@ -1548,11 +1549,12 @@
           if (diffAf >= 0) {
             const idxCont = diffAf % tecsAtivos.length;
             tec = tecsAtivos[idxCont];
-            obsTec = "Rodízio 24x72 Categoria";
+            obsTec = "Rodízio 24x72 Categoria (Afastamento)";
           }
         }
       }
 
+      // FORA DA LICENÇA, VOLTA AO 24X96 NORMAL DA EQUIPE
       if (!tec) {
         const eqIndex = ((diasCorridos % duplasPadrao.length) + duplasPadrao.length) % duplasPadrao.length;
         tec = duplasPadrao[eqIndex % duplasPadrao.length].tec;
