@@ -251,7 +251,7 @@
     </div>
   </div>
 
-  <!-- ABA 2: TROCAS DE PLANTÃO (COM SELEÇÃO DE PERÍODO E "A HAVER") -->
+  <!-- ABA 2: TROCAS DE PLANTÃO -->
   <div id="abaTrocas" class="card" style="display:none;">
     <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
     <form id="formTroca" onsubmit="solicitarTroca(event)">
@@ -321,7 +321,7 @@
     </div>
   </div>
 
-  <!-- ABA 3: CADASTRO DE COLABORADORES (EXCLUSIVO MASTER/COORDENADOR) -->
+  <!-- ABA 3: CADASTRO DE COLABORADORES -->
   <div id="abaColaboradores" class="card" style="display:none;">
     <h3 id="tituloFormColaborador">Cadastrar / Editar Colaborador</h3>
     <form id="formColaborador" onsubmit="salvarColaborador(event)">
@@ -386,7 +386,7 @@
     </div>
   </div>
 
-  <!-- ABA 4: LICENÇAS E COBERTURA DIÁRIA (EXCLUSIVO MASTER/COORDENADOR) -->
+  <!-- ABA 4: LICENÇAS E COBERTURA DIÁRIA -->
   <div id="abaAfastamentos" class="card" style="display:none;">
     <h3 id="tituloFormAfastamento">Registrar Licença e Cobertura Diária por Função</h3>
     <form id="formAfastamento" onsubmit="salvarAfastamento(event)">
@@ -459,7 +459,7 @@
     </div>
   </div>
 
-  <!-- ABA 5: PAINEL ADMINISTRADOR (EXCLUSIVO MASTER/COORDENADOR) -->
+  <!-- ABA 5: PAINEL ADMINISTRADOR -->
   <div id="abaAdmin" class="card" style="display:none;">
     <h3>⚙️ Gestão Administrativa, Anexo de Logo e Auditoria Geral</h3>
     
@@ -713,13 +713,18 @@
     }
 
     async function carregarDados() {
+      // Carrega do LocalStorage primeiro para garantia imediata
+      try {
+        const aSalvos = localStorage.getItem('samu_afastamentos_v20');
+        if (aSalvos) afastamentos = JSON.parse(aSalvos);
+      } catch(e) {}
+
       if (dbNuvem) {
         try {
           const { data: cData } = await dbNuvem.from('colaboradores').select('*');
           if (cData && cData.length > 0) colaboradores = cData;
           else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
 
-          // GARANTE DANIEL COMO CONDUTOR SOCORRISTA (E MASTER DE GESTÃO)
           const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
           if (me) me.funcao = "Condutor Socorrista";
 
@@ -727,7 +732,15 @@
           if (tData) trocas = tData;
 
           const { data: aData } = await dbNuvem.from('afastamentos').select('*');
-          if (aData) afastamentos = aData;
+          if (aData && aData.length > 0) {
+            afastamentos = aData.map(a => ({
+              ...a,
+              substitutosDiarios: typeof a.substitutosDiarios === 'string' 
+                ? JSON.parse(a.substitutosDiarios) 
+                : a.substitutosDiarios
+            }));
+            localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
+          }
 
           document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Sincronizada";
         } catch(e) {
@@ -775,10 +788,26 @@
     }
 
     async function salvarAfastamentosStorage() {
+      localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
+
       if (dbNuvem) {
-        await dbNuvem.from('afastamentos').upsert(afastamentos);
-      } else {
-        localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
+        try {
+          const afastamentosParaNuvem = afastamentos.map(a => ({
+            ...a,
+            substitutosDiarios: typeof a.substitutosDiarios === 'object' 
+              ? JSON.stringify(a.substitutosDiarios) 
+              : a.substitutosDiarios
+          }));
+
+          const { error } = await dbNuvem.from('afastamentos').upsert(afastamentosParaNuvem);
+          if (error) {
+            console.warn("Aviso de sincronização na nuvem:", error.message);
+          } else {
+            console.log("Licença sincronizada com sucesso no Supabase!");
+          }
+        } catch (err) {
+          console.error("Erro ao salvar no Supabase:", err);
+        }
       }
     }
 
@@ -1214,7 +1243,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS COM PERÍODO E QUIT A HAVER
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1576,7 +1605,7 @@
       return { cond, tec, obs };
     }
 
-    // MOTOR DE ESCALAS INTEGRADO (OPERACIONAL, 40H E MATRIZ COREN)
+    // MOTOR DE ESCALAS INTEGRADO
     function renderizarEscalas() {
       const mesAno = document.getElementById("escalaMesAno").value;
       const dataBaseStr = document.getElementById("escalaDataBase").value;
