@@ -486,8 +486,9 @@
 </div>
 
   <script>
+    // VARIAVEIS SUPABASE ATUALIZADAS
     const SUPABASE_URL = "https://rcpgukslnlfptreiusff.supabase.co"; 
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcGd1a3NsbmxmcHRreml1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMDQ2MTYsImV4cCI6MjEwMjU4MDYxNn0.LgadTI7PwlLMBT5TbNkMncI0OfL22wjGAU_xanR4J6A"; 
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcGd1a3NsbmxmcHRyZWl1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMDQ2MTYsImV4cCI6MjEwMjU4MDYxNn0.LgadTI7PwlLMBT5TbNkMncI0OfL22wjGAU_xanR4J6A"; 
     
     let dbNuvem = null;
     let usuarioLogado = null;
@@ -847,7 +848,6 @@
       window.print();
     }
 
-    // OBTÉM OS PLANTÕES OFICIAIS DE UM SERVIDOR ESPECÍFICO NO MÊS SELECIONADO
     function obterPlantoesDoServidorNoMes(nomeServidor) {
       const mesAno = document.getElementById("escalaMesAno").value;
       const dataBaseStr = document.getElementById("escalaDataBase").value;
@@ -871,7 +871,6 @@
       return plantoes;
     }
 
-    // FILTRA O SELECT "DATA DO MEU PLANTÃO" COM APENAS OS PLANTÕES DO SOLICITANTE
     function preencherDatasTrocasForm() {
       const selDataMinha = document.getElementById("trocaDataMinha");
       if (!selDataMinha) return;
@@ -898,7 +897,6 @@
       atualizarDatasDevolucaoForm();
     }
 
-    // FILTRA O SELECT "DATA DE DEVOLUÇÃO" COM APENAS OS PLANTÕES DO SUBSTITUTO
     function atualizarDatasDevolucaoForm() {
       const selDev = document.getElementById("trocaDataDevolucao");
       const nomeSubstituto = document.getElementById("trocaSubstituto") ? document.getElementById("trocaSubstituto").value : "";
@@ -924,7 +922,6 @@
       });
     }
 
-    // CADASTRO COLABORADORES
     async function salvarColaborador(e) {
       e.preventDefault();
       const idEdit = document.getElementById("cadId").value;
@@ -1048,7 +1045,6 @@
       }
     }
 
-    // FILTRO RIGOROSO POR CATEGORIA
     function preencherSelectsSubstitutosTroca() {
       const selSubst = document.getElementById("trocaSubstituto");
       if (!selSubst) return;
@@ -1309,7 +1305,6 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO DE TROCA
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const grpDev = document.getElementById("grpDataDevolucao");
@@ -1399,12 +1394,10 @@
       await carregarDados();
     }
 
-    // PERMITE QUITAR UMA TROCA "A HAVER" DIRETAMENTE DA TABELA DE SOLICITAÇÕES
     async function quitarTrocaAHaverLinha(idTroca) {
       const t = trocas.find(item => item.id == idTroca);
       if (!t) return;
 
-      // Determina de quem é o plantão a ser pago (o colega do usuário logado nesta troca)
       const nomeLogadoNorm = usuarioLogado.nome.trim().toLowerCase();
       const ehSolicitante = (t.solicitante.trim().toLowerCase() === nomeLogadoNorm);
       const colegaNome = ehSolicitante ? t.substituto : t.solicitante;
@@ -1433,7 +1426,7 @@
       const dataDevolucaoEscolhida = plantoesColega[idxEscolhido];
 
       t.dataDevolucao = dataDevolucaoEscolhida;
-      t.status = "PENDENTE"; // Volta para PENDENTE para o colega/gestor confirmar a data sugerida
+      t.status = "PENDENTE";
       t.motivo += ` | [Data de devolução agendada para ${dataDevolucaoEscolhida.split('-').reverse().join('/')}]`;
 
       if (dbNuvem) {
@@ -1506,7 +1499,6 @@
       return "🔄 24h Integral";
     }
 
-    // LISTAGEM DE TROCAS
     function renderizarTabelaTrocas() {
       const tb = document.getElementById("tbTrocas");
       if (!tb) return;
@@ -1556,7 +1548,6 @@
             acoes = `<button class="btn btn-info" onclick="editarTrocaSolicitante(${t.id})">✏️ Editar</button>`;
           }
         } else if (t.status === "APROVADO" && t.tipo === "A Haver" && t.dataDevolucao === "A HAVER") {
-          // Ação direta na linha para definir a data de devolução do "A HAVER"
           acoes = `<button class="btn btn-warning" onclick="quitarTrocaAHaverLinha(${t.id})">🗓️ Pagar Plantão</button>`;
         }
 
@@ -1577,7 +1568,6 @@
       });
     }
 
-    // PAINEL ADMINISTRADOR (GESTOR)
     async function adminCancelarTroca(id) {
       const t = trocas.find(item => item.id == id);
       if (t) {
@@ -1638,7 +1628,6 @@
       });
     }
 
-    // HELPER: CALCULA A QUEM PERTENCE O PLANTÃO EM UM DIA ESPECÍFICO
     function calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao) {
       const dataBase = new Date(dataBaseStr + "T00:00:00");
       const dtAtual = new Date(dtIso + "T00:00:00");
@@ -1650,7 +1639,6 @@
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
-      // 1. AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA
       const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
       const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
 
@@ -1711,7 +1699,6 @@
         tec = duplasPadrao[eqIndex % duplasPadrao.length].tec;
       }
 
-      // 2. AFASTAMENTOS PONTUAIS COM SUBSTITUTOS
       let obs = obsCond || obsTec || "-";
 
       afastamentos.forEach(atestado => {
@@ -1740,7 +1727,6 @@
         }
       });
 
-      // 3. TROCAS APROVADAS
       const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
       if (trocaAprovada) {
         const strPeriodo = trocaAprovada.periodo ? ` (${formatarPeriodo(trocaAprovada.periodo)})` : '';
@@ -1758,7 +1744,6 @@
       return { cond, tec, obs };
     }
 
-    // MOTOR DE ESCALAS INTEGRADO
     function renderizarEscalas() {
       const mesAno = document.getElementById("escalaMesAno").value;
       const dataBaseStr = document.getElementById("escalaDataBase").value;
