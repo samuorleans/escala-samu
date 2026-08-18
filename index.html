@@ -1227,34 +1227,29 @@
         subsPorDia[sel.getAttribute("data-data")] = sel.value;
       });
 
+      const objetoAfastamento = {
+        servidor: nomeServidor,
+        funcao: servidorObj ? servidorObj.funcao : "—",
+        tipoMotivo: tipoMotivo,
+        inicio: document.getElementById("afastInicio").value,
+        fim: document.getElementById("afastFim").value,
+        regime: regNome,
+        substitutosDiarios: JSON.stringify(subsPorDia),
+        obs: document.getElementById("afastObs").value || "-"
+      };
+
       if (idEdit) {
-        const idx = afastamentos.findIndex(a => a.id == idEdit);
-        if (idx !== -1) {
-          afastamentos[idx].servidor = nomeServidor;
-          afastamentos[idx].funcao = servidorObj ? servidorObj.funcao : "—";
-          afastamentos[idx].tipoMotivo = tipoMotivo;
-          afastamentos[idx].inicio = document.getElementById("afastInicio").value;
-          afastamentos[idx].fim = document.getElementById("afastFim").value;
-          afastamentos[idx].regime = regNome;
-          afastamentos[idx].substitutosDiarios = subsPorDia;
-          afastamentos[idx].obs = document.getElementById("afastObs").value;
-        }
-      } else {
-        const novo = {
-          id: Date.now(),
-          servidor: nomeServidor,
-          funcao: servidorObj ? servidorObj.funcao : "—",
-          tipoMotivo: tipoMotivo,
-          inicio: document.getElementById("afastInicio").value,
-          fim: document.getElementById("afastFim").value,
-          regime: regNome,
-          substitutosDiarios: subsPorDia,
-          obs: document.getElementById("afastObs").value
-        };
-        afastamentos.push(novo);
+        objetoAfastamento.id = Number(idEdit);
       }
 
-      await salvarAfastamentosStorage();
+      if (dbNuvem) {
+        const { error } = await dbNuvem.from('afastamentos').upsert([objetoAfastamento]);
+        if (error) {
+          alert("Erro ao gravar afastamento no banco de dados: " + error.message);
+          return;
+        }
+      }
+
       alert("Licença salva na nuvem com sucesso!");
       cancelarEdicaoAfastamento();
       await carregarDados();
@@ -1290,8 +1285,14 @@
 
     function cancelarEdicaoAfastamento() {
       document.getElementById("afastId").value = "";
-      if (document.getElementById("formAfastamento")) document.getElementById("formAfastamento").reset();
-      document.getElementById("containerGradeDias").innerHTML = `<span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar os plantões reais.</span>`;
+      const form = document.getElementById("formAfastamento");
+      if (form) form.reset();
+
+      const container = document.getElementById("containerGradeDias");
+      if (container) {
+        container.innerHTML = `<span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar os plantões reais.</span>`;
+      }
+      
       document.getElementById("tituloFormAfastamento").innerText = "Registrar Licença e Cobertura Diária por Função";
       document.getElementById("btnSalvarAfastamento").innerText = "🏥 Salvar Licença na Nuvem";
     }
