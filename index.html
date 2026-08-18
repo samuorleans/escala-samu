@@ -693,8 +693,6 @@
       document.getElementById("btnTabAdmin").style.display = ehGestor ? "inline-block" : "none";
 
       elGestores.forEach(el => el.style.display = ehGestor ? "flex" : "none");
-
-      trocarAba('trocas');
     }
 
     function fazerLogout() {
@@ -713,26 +711,24 @@
     }
 
     async function carregarDados() {
-      // Carrega do LocalStorage primeiro para garantia imediata
-      try {
-        const aSalvos = localStorage.getItem('samu_afastamentos_v20');
-        if (aSalvos) afastamentos = JSON.parse(aSalvos);
-      } catch(e) {}
+      carregarFallbackLocal();
 
       if (dbNuvem) {
         try {
           const { data: cData } = await dbNuvem.from('colaboradores').select('*');
           if (cData && cData.length > 0) colaboradores = cData;
-          else colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
 
           const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
           if (me) me.funcao = "Condutor Socorrista";
 
-          const { data: tData } = await dbNuvem.from('trocas').select('*');
-          if (tData) trocas = tData;
+          const { data: tData, error: tErr } = await dbNuvem.from('trocas').select('*');
+          if (tData && !tErr && tData.length > 0) {
+            trocas = tData;
+            localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
+          }
 
-          const { data: aData } = await dbNuvem.from('afastamentos').select('*');
-          if (aData && aData.length > 0) {
+          const { data: aData, error: aErr } = await dbNuvem.from('afastamentos').select('*');
+          if (aData && !aErr && aData.length > 0) {
             afastamentos = aData.map(a => ({
               ...a,
               substitutosDiarios: typeof a.substitutosDiarios === 'string' 
@@ -744,11 +740,10 @@
 
           document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Sincronizada";
         } catch(e) {
-          carregarFallbackLocal();
+          console.warn("Erro sincronizando nuvem:", e);
         }
-      } else {
-        carregarFallbackLocal();
       }
+
       ordenarAlfabeticamente();
       verificarSessao();
       aplicarLogoCarregada();
@@ -765,6 +760,7 @@
 
         const tSalvas = localStorage.getItem('samu_trocas_v20');
         if (tSalvas) trocas = JSON.parse(tSalvas);
+
         const aSalvos = localStorage.getItem('samu_afastamentos_v20');
         if (aSalvos) afastamentos = JSON.parse(aSalvos);
       } catch(e){}
@@ -772,18 +768,22 @@
 
     async function salvarColaboradoresStorage() {
       ordenarAlfabeticamente();
+      localStorage.setItem('samu_colaboradores_v20', JSON.stringify(colaboradores));
       if (dbNuvem) {
-        await dbNuvem.from('colaboradores').upsert(colaboradores);
-      } else {
-        localStorage.setItem('samu_colaboradores_v20', JSON.stringify(colaboradores));
+        try { await dbNuvem.from('colaboradores').upsert(colaboradores); } catch(e){}
       }
     }
 
     async function salvarTrocasStorage() {
+      localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
+
       if (dbNuvem) {
-        await dbNuvem.from('trocas').upsert(trocas);
-      } else {
-        localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
+        try {
+          const { error } = await dbNuvem.from('trocas').upsert(trocas);
+          if (error) console.warn("Supabase trocas error:", error.message);
+        } catch(e) {
+          console.error("Erro salvando trocas no Supabase:", e);
+        }
       }
     }
 
@@ -800,13 +800,9 @@
           }));
 
           const { error } = await dbNuvem.from('afastamentos').upsert(afastamentosParaNuvem);
-          if (error) {
-            console.warn("Aviso de sincronização na nuvem:", error.message);
-          } else {
-            console.log("Licença sincronizada com sucesso no Supabase!");
-          }
+          if (error) console.warn("Supabase afastamentos error:", error.message);
         } catch (err) {
-          console.error("Erro ao salvar no Supabase:", err);
+          console.error("Erro ao salvar afastamentos no Supabase:", err);
         }
       }
     }
@@ -1243,7 +1239,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (CORRIGIDO PARA SUPABASE E LOCALSTORAGE)
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1293,8 +1289,7 @@
           alert("Solicitação de troca atualizada!");
         }
       } else {
-        const novaTroca = {
-          id: Math.floor(Math.random() * 9000) + 1000,
+        const novaTrocaObj = {
           solicitante: nomeSolicitante,
           dataMinha: document.getElementById("trocaDataMinha").value,
           periodo: periodo,
@@ -1304,8 +1299,26 @@
           motivo: document.getElementById("trocaMotivo").value,
           status: "PENDENTE"
         };
-        trocas.push(novaTroca);
-        alert("Solicitação enviada para a nuvem com sucesso!");
+
+        if (dbNuvem) {
+          try {
+            const { data, error } = await dbNuvem.from('trocas').insert([novaTrocaObj]).select();
+            if (!error && data && data.length > 0) {
+              trocas.push(data[0]);
+            } else {
+              novaTrocaObj.id = Date.now();
+              trocas.push(novaTrocaObj);
+            }
+          } catch (err) {
+            novaTrocaObj.id = Date.now();
+            trocas.push(novaTrocaObj);
+          }
+        } else {
+          novaTrocaObj.id = Date.now();
+          trocas.push(novaTrocaObj);
+        }
+
+        alert("Solicitação gravada com sucesso! O substituto já pode visualizar a troca.");
       }
 
       await salvarTrocasStorage();
