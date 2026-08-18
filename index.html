@@ -171,7 +171,7 @@
       </div>
     </div>
     <div class="user-info">
-      <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Ativa</span>
+      <span class="status-nuvem" id="stNuvem">☁️ Nuvem Supabase Conectada</span>
       <span id="labelUsuarioConectado" style="font-weight:bold;">Visualização Pública (Consulta)</span>
       
       <button class="btn btn-primary" id="btnAbrirLogin" onclick="abrirModalLogin()">🔑 Fazer Login / Restrito</button>
@@ -710,41 +710,55 @@
       aplicarPermissoes();
     }
 
+    // CARREGAMENTO 100% ONLINE VIA SUPABASE (SEM LOCALSTORAGE OFFLINE SILENCIOSO)
     async function carregarDados() {
-      carregarFallbackLocal();
+      if (!dbNuvem) {
+        alert("Erro crítico: Banco de Dados Supabase não inicializado. Verifique sua conexão com a internet.");
+        document.getElementById("stNuvem").innerText = "❌ Nuvem Desconectada";
+        document.getElementById("stNuvem").style.background = "#fee2e2";
+        document.getElementById("stNuvem").style.color = "#b91c1c";
+        return;
+      }
 
-      if (dbNuvem) {
-        try {
-          const { data: cData } = await dbNuvem.from('colaboradores').select('*');
-          if (cData && cData.length > 0) colaboradores = cData;
+      try {
+        // 1. Busca Colaboradores
+        const { data: cData, error: cErr } = await dbNuvem.from('colaboradores').select('*');
+        if (cErr) throw cErr;
 
-          const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
-          if (me) me.funcao = "Condutor Socorrista";
-
-          const { data: tData, error: tErr } = await dbNuvem.from('trocas').select('*');
-          if (tData && !tErr && tData.length > 0) {
-            // Mescla sem perder trocas locais recentes
-            const idsRemotos = new Set(tData.map(t => t.id));
-            const trocasApenasLocais = trocas.filter(t => !idsRemotos.has(t.id));
-            trocas = [...tData, ...trocasApenasLocais];
-            localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
-          }
-
-          const { data: aData, error: aErr } = await dbNuvem.from('afastamentos').select('*');
-          if (aData && !aErr && aData.length > 0) {
-            afastamentos = aData.map(a => ({
-              ...a,
-              substitutosDiarios: typeof a.substitutosDiarios === 'string' 
-                ? JSON.parse(a.substitutosDiarios) 
-                : a.substitutosDiarios
-            }));
-            localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
-          }
-
-          document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Sincronizada";
-        } catch(e) {
-          console.warn("Aviso de sincronização:", e);
+        if (cData && cData.length > 0) {
+          colaboradores = cData;
+        } else {
+          colaboradores = JSON.parse(JSON.stringify(colaboradoresOficiais));
         }
+
+        const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
+        if (me) me.funcao = "Condutor Socorrista";
+
+        // 2. Busca Trocas
+        const { data: tData, error: tErr } = await dbNuvem.from('trocas').select('*');
+        if (tErr) throw tErr;
+        trocas = tData || [];
+
+        // 3. Busca Afastamentos
+        const { data: aData, error: aErr } = await dbNuvem.from('afastamentos').select('*');
+        if (aErr) throw aErr;
+        
+        afastamentos = (aData || []).map(a => ({
+          ...a,
+          substitutosDiarios: typeof a.substitutosDiarios === 'string' 
+            ? JSON.parse(a.substitutosDiarios) 
+            : a.substitutosDiarios
+        }));
+
+        document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Ativa";
+        document.getElementById("stNuvem").style.background = "#dcfce7";
+        document.getElementById("stNuvem").style.color = "#15803d";
+      } catch(e) {
+        console.error("Erro ao carregar do Supabase:", e);
+        alert("Atenção: Não foi possível conectar ao servidor online do Supabase. Verifique sua internet.");
+        document.getElementById("stNuvem").innerText = "⚠️ Falha ao Sincronizar Nuvem";
+        document.getElementById("stNuvem").style.background = "#fef3c7";
+        document.getElementById("stNuvem").style.color = "#b45309";
       }
 
       ordenarAlfabeticamente();
@@ -753,60 +767,39 @@
       renderizarTudo();
     }
 
-    function carregarFallbackLocal() {
-      try {
-        const cSalvos = localStorage.getItem('samu_colaboradores_v20');
-        colaboradores = cSalvos ? JSON.parse(cSalvos) : JSON.parse(JSON.stringify(colaboradoresOficiais));
-        
-        const me = colaboradores.find(c => c.cpf.replace(/\D/g, '') === "07548636970");
-        if (me) me.funcao = "Condutor Socorrista";
-
-        const tSalvas = localStorage.getItem('samu_trocas_v20');
-        if (tSalvas) trocas = JSON.parse(tSalvas);
-
-        const aSalvos = localStorage.getItem('samu_afastamentos_v20');
-        if (aSalvos) afastamentos = JSON.parse(aSalvos);
-      } catch(e){}
-    }
-
     async function salvarColaboradoresStorage() {
       ordenarAlfabeticamente();
-      localStorage.setItem('samu_colaboradores_v20', JSON.stringify(colaboradores));
-      if (dbNuvem) {
-        try { await dbNuvem.from('colaboradores').upsert(colaboradores); } catch(e){}
+      if (!dbNuvem) { alert("Sem conexão online para salvar colaboradores."); return; }
+      
+      const { error } = await dbNuvem.from('colaboradores').upsert(colaboradores);
+      if (error) {
+        alert("Erro ao salvar colaboradores na nuvem: " + error.message);
       }
     }
 
     async function salvarTrocasStorage() {
-      localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
+      if (!dbNuvem) { alert("Sem conexão online para salvar trocas."); return; }
 
-      if (dbNuvem) {
-        try {
-          const { error } = await dbNuvem.from('trocas').upsert(trocas);
-          if (error) console.warn("Erro ao sincronizar trocas na nuvem:", error.message);
-        } catch(e) {
-          console.error("Erro salvando trocas no Supabase:", e);
-        }
+      const { error } = await dbNuvem.from('trocas').upsert(trocas);
+      if (error) {
+        console.error("Erro Supabase:", error);
+        alert("Falha ao salvar alteração de troca online: " + error.message);
       }
     }
 
     async function salvarAfastamentosStorage() {
-      localStorage.setItem('samu_afastamentos_v20', JSON.stringify(afastamentos));
+      if (!dbNuvem) { alert("Sem conexão online para salvar licenças."); return; }
 
-      if (dbNuvem) {
-        try {
-          const afastamentosParaNuvem = afastamentos.map(a => ({
-            ...a,
-            substitutosDiarios: typeof a.substitutosDiarios === 'object' 
-              ? JSON.stringify(a.substitutosDiarios) 
-              : a.substitutosDiarios
-          }));
+      const afastamentosParaNuvem = afastamentos.map(a => ({
+        ...a,
+        substitutosDiarios: typeof a.substitutosDiarios === 'object' 
+          ? JSON.stringify(a.substitutosDiarios) 
+          : a.substitutosDiarios
+      }));
 
-          const { error } = await dbNuvem.from('afastamentos').upsert(afastamentosParaNuvem);
-          if (error) console.warn("Supabase afastamentos error:", error.message);
-        } catch (err) {
-          console.error("Erro ao salvar afastamentos no Supabase:", err);
-        }
+      const { error } = await dbNuvem.from('afastamentos').upsert(afastamentosParaNuvem);
+      if (error) {
+        alert("Erro ao salvar licenças na nuvem: " + error.message);
       }
     }
 
@@ -852,6 +845,7 @@
 
       if (aba === 'trocas') {
         preencherSelectsSubstitutosTroca();
+        preencherSelectAHaver();
       }
     }
 
@@ -1002,7 +996,7 @@
       }
     }
 
-    // FILTRO RIGOROSO POR CATEGORIA (SÓ CONDUTOR COM CONDUTOR / TÉCNICO COM TÉCNICO)
+    // FILTRO RIGOROSO POR CATEGORIA
     function preencherSelectsSubstitutosTroca() {
       const selSubst = document.getElementById("trocaSubstituto");
       if (!selSubst) return;
@@ -1018,7 +1012,7 @@
       const ehCondutor = fUser.includes("condutor");
 
       const colegasMesmaCategoria = colaboradores.filter(c => {
-        if (c.nome === usuarioLogado.nome) return false; // Não pode trocar com ele mesmo
+        if (c.nome.trim().toLowerCase() === usuarioLogado.nome.trim().toLowerCase()) return false;
         const fCol = c.funcao.toLowerCase();
 
         if (ehCondutor) {
@@ -1038,6 +1032,7 @@
       });
     }
 
+    // LISTA TROCAS A HAVER PERMITINDO QUITÁ-LAS E DEFINIR A DATA DE DEVOLUÇÃO
     function preencherSelectAHaver() {
       const selQuitar = document.getElementById("trocaQuitarId");
       if (!selQuitar) return;
@@ -1046,11 +1041,18 @@
 
       if (!usuarioLogado) return;
 
-      const pendentes = trocas.filter(t => t.tipo === "A Haver" && t.status === "APROVADO" && (t.substituto === usuarioLogado.nome || t.solicitante === usuarioLogado.nome));
+      const nomeLogadoNorm = usuarioLogado.nome.trim().toLowerCase();
+
+      // Trocas "A Haver" Aprovadas onde o usuário logado seja o Solicitante ou o Substituto
+      const pendentes = trocas.filter(t => 
+        t.tipo === "A Haver" && 
+        t.status === "APROVADO" && 
+        (t.substituto.trim().toLowerCase() === nomeLogadoNorm || t.solicitante.trim().toLowerCase() === nomeLogadoNorm)
+      );
 
       pendentes.forEach(p => {
-        const dtFmt = p.dataMinha.split('-').reverse().join('/');
-        selQuitar.innerHTML += `<option value="${p.id}">#${p.id} — Devendo Plantão de ${dtFmt} (${p.solicitante} -> ${p.substituto})</option>`;
+        const dtFmt = p.dataMinha ? p.dataMinha.split('-').reverse().join('/') : 'Data N/D';
+        selQuitar.innerHTML += `<option value="${p.id}">#${p.id} — Plantão Paga/Devendo de ${dtFmt} (${p.solicitante} ↔ ${p.substituto})</option>`;
       });
 
       document.getElementById("grpQuitarAHaver").style.display = pendentes.length > 0 ? "flex" : "none";
@@ -1177,7 +1179,6 @@
           afastamentos[idx].substitutosDiarios = subsPorDia;
           afastamentos[idx].obs = document.getElementById("afastObs").value;
         }
-        alert("Licença e substitutos diários atualizados!");
       } else {
         const novo = {
           id: Date.now(),
@@ -1190,13 +1191,12 @@
           obs: document.getElementById("afastObs").value
         };
         afastamentos.push(novo);
-        alert("Licença e substitutos gravados!");
       }
 
       await salvarAfastamentosStorage();
+      alert("Licença salva na nuvem com sucesso!");
       cancelarEdicaoAfastamento();
-      renderizarTabelaAfastamentos();
-      renderizarEscalas();
+      await carregarDados();
     }
 
     function editarAfastamento(id) {
@@ -1236,11 +1236,11 @@
 
     async function excluirAfastamento(id) {
       if (confirm("Confirma a remoção desta licença?")) {
-        afastamentos = afastamentos.filter(a => a.id !== id);
-        if (dbNuvem) await dbNuvem.from('afastamentos').delete().eq('id', id);
-        await salvarAfastamentosStorage();
-        renderizarTabelaAfastamentos();
-        renderizarEscalas();
+        if (dbNuvem) {
+          const { error } = await dbNuvem.from('afastamentos').delete().eq('id', id);
+          if (error) { alert("Erro ao excluir do servidor: " + error.message); return; }
+        }
+        await carregarDados();
       }
     }
 
@@ -1281,7 +1281,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (ESTRUTURA INTEGRADA PARA GESTOR E SUBSTITUTO)
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (ENVIO DIRETO 100% ONLINE)
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1300,6 +1300,11 @@
       e.preventDefault();
       if (!usuarioLogado) {
         alert("Você precisa estar logado para solicitar trocas.");
+        return;
+      }
+
+      if (!dbNuvem) {
+        alert("Erro de conexão: Banco Supabase indisponível.");
         return;
       }
 
@@ -1322,11 +1327,13 @@
 
       const nomeSolicitante = usuarioLogado.nome;
 
+      // Quitar troca "A Haver" em aberto, se for o caso
       if (quitarId) {
         const trocaAntiga = trocas.find(t => t.id == quitarId);
         if (trocaAntiga) {
           trocaAntiga.status = "PAGO / QUITADO";
           trocaAntiga.motivo += ` | [QUITADO VIA TROCA #${Date.now().toString().slice(-4)}]`;
+          await dbNuvem.from('trocas').upsert([trocaAntiga]);
         }
       }
 
@@ -1339,12 +1346,16 @@
           trocas[idx].tipo = tipo;
           trocas[idx].dataDevolucao = dataDev || "A HAVER";
           trocas[idx].motivo = document.getElementById("trocaMotivo").value;
+
+          const { error } = await dbNuvem.from('trocas').upsert([trocas[idx]]);
+          if (error) {
+            alert("Erro ao atualizar troca online: " + error.message);
+            return;
+          }
           alert("Solicitação de troca atualizada com sucesso!");
         }
       } else {
-        const novoId = Date.now();
         const novaTrocaObj = {
-          id: novoId,
           solicitante: nomeSolicitante,
           dataMinha: document.getElementById("trocaDataMinha").value,
           periodo: periodo,
@@ -1355,25 +1366,17 @@
           status: "PENDENTE"
         };
 
-        trocas.push(novaTrocaObj);
-
-        if (dbNuvem) {
-          try {
-            await dbNuvem.from('trocas').insert([novaTrocaObj]);
-          } catch (err) {
-            console.warn("Gravando localmente após falha na nuvem:", err);
-          }
+        const { error } = await dbNuvem.from('trocas').insert([novaTrocaObj]);
+        if (error) {
+          alert("Erro ao enviar troca para o banco de dados online: " + error.message);
+          return;
         }
 
-        alert(`Solicitação de troca enviada com sucesso! Ela está disponível para o substituto (${substitutoEscolhido}) e para a Gestão.`);
+        alert(`Solicitação de troca enviada para a nuvem! Ela está visível para ${substitutoEscolhido} e para a Gestão.`);
       }
 
-      await salvarTrocasStorage();
       cancelarEdicaoTroca();
-      preencherSelectAHaver();
-      renderizarTabelaTrocas();
-      renderizarAdminTrocas();
-      renderizarEscalas();
+      await carregarDados();
     }
 
     function editarTrocaSolicitante(id) {
@@ -1412,11 +1415,14 @@
       const t = trocas.find(item => item.id == id);
       if (t) {
         t.status = aprovar ? "APROVADO" : "RECUSADO";
-        await salvarTrocasStorage();
-        preencherSelectAHaver();
-        renderizarTabelaTrocas();
-        renderizarAdminTrocas();
-        renderizarEscalas();
+        if (dbNuvem) {
+          const { error } = await dbNuvem.from('trocas').upsert([t]);
+          if (error) {
+            alert("Erro ao responder a troca no servidor: " + error.message);
+            return;
+          }
+        }
+        await carregarDados();
       }
     }
 
@@ -1426,7 +1432,7 @@
       return "🔄 24h Integral";
     }
 
-    // LISTAGEM DE TROCAS PARA O USUÁRIO E SUBSTITUTO
+    // LISTAGEM DE TROCAS VINCULADA PERFEITAMENTE AO USUÁRIO LOGADO E AO SUBSTITUTO
     function renderizarTabelaTrocas() {
       const tb = document.getElementById("tbTrocas");
       if (!tb) return;
@@ -1437,16 +1443,19 @@
         return;
       }
 
+      const nomeLogadoNorm = usuarioLogado.nome.trim().toLowerCase();
       const f = usuarioLogado.funcao.toLowerCase();
       const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || usuarioLogado.cpf.replace(/\D/g, '') === "07548636970";
 
-      // Mostra as trocas onde o usuário é SOLICITANTE ou SUBSTITUTO (se for Gestor, mostra todas)
-      const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => 
-        t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome
-      );
+      // Filtra exibindo se o usuário for o SOLICITANTE ou o SUBSTITUTO (ou se for Gestor)
+      const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => {
+        const sol = (t.solicitante || "").trim().toLowerCase();
+        const sub = (t.substituto || "").trim().toLowerCase();
+        return sol === nomeLogadoNorm || sub === nomeLogadoNorm;
+      });
 
       if (trocasFiltradas.length === 0) {
-        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca encontrada para seu perfil.</td></tr>`;
         return;
       }
 
@@ -1458,8 +1467,11 @@
         if (t.status === "PAGO / QUITADO") stBadge = `<span class="badge badge-quitado">Pago / Quitado</span>`;
 
         let acoes = "-";
-        const ehSubstituto = (usuarioLogado.nome === t.substituto);
-        const ehSolicitante = (usuarioLogado.nome === t.solicitante);
+        const solNorm = (t.solicitante || "").trim().toLowerCase();
+        const subNorm = (t.substituto || "").trim().toLowerCase();
+
+        const ehSubstituto = (subNorm === nomeLogadoNorm);
+        const ehSolicitante = (solNorm === nomeLogadoNorm);
 
         if (t.status === "PENDENTE") {
           if (ehSubstituto || ehGestor) {
@@ -1489,7 +1501,7 @@
       });
     }
 
-    // PAINEL ADMINISTRADOR (LISTAGEM INTEGRAL DE TROCAS PARA O GESTOR)
+    // PAINEL ADMINISTRADOR (GESTOR)
     async function adminCancelarTroca(id) {
       const t = trocas.find(item => item.id == id);
       if (t) {
@@ -1497,10 +1509,8 @@
         if (justificativa && justificativa.trim() !== "") {
           t.status = "CANCELADO";
           t.motivo += ` | [CANCELADO ADMIN]: ${justificativa.trim()}`;
-          await salvarTrocasStorage();
-          renderizarTabelaTrocas();
-          renderizarAdminTrocas();
-          renderizarEscalas();
+          if (dbNuvem) await dbNuvem.from('trocas').upsert([t]);
+          await carregarDados();
           alert("Troca cancelada com sucesso!");
         }
       }
@@ -1515,10 +1525,8 @@
         if (novaDataMinha) {
           t.dataMinha = novaDataMinha;
           if (novaDataDev) t.dataDevolucao = novaDataDev;
-          await salvarTrocasStorage();
-          renderizarTabelaTrocas();
-          renderizarAdminTrocas();
-          renderizarEscalas();
+          if (dbNuvem) await dbNuvem.from('trocas').upsert([t]);
+          await carregarDados();
           alert("Troca reajustada pelo Administrador!");
         }
       }
@@ -1566,7 +1574,7 @@
         return { cond: "FORA DA SEQUÊNCIA", tec: "FORA DA SEQUÊNCIA", obs: "Data anterior à Data-Base" };
       }
 
-      // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA (LIMITADO EXCLUSIVAMENTE AO PERÍODO DA LICENÇA)
+      // 1. VERIFICA AFASTAMENTOS COM RODÍZIO 24X72 POR CATEGORIA
       const afCond = afastamentos.find(a => a.funcao.includes("Condutor") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
       const afTec = afastamentos.find(a => (a.funcao.includes("Técnic") || a.funcao.includes("Enfermeir")) && !a.funcao.includes("Coordenadora") && a.regime.includes("Categoria") && dtIso >= a.inicio && dtIso <= a.fim);
 
