@@ -486,7 +486,6 @@
 </div>
 
   <script>
-    // VARIAVEIS SUPABASE ATUALIZADAS
     const SUPABASE_URL = "https://rcpgukslnlfptreiusff.supabase.co"; 
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcGd1a3NsbmxmcHRyZWl1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMDQ2MTYsImV4cCI6MjEwMjU4MDYxNn0.LgadTI7PwlLMBT5TbNkMncI0OfL22wjGAU_xanR4J6A"; 
     
@@ -848,28 +847,44 @@
       window.print();
     }
 
-    function obterPlantoesDoServidorNoMes(nomeServidor) {
+    // BUSCA PLANTÕES DO SERVIDOR EM UMA JANELA EXPANDIDA (MÊS SELECIONADO + 2 MESES SEGUINTES)
+    function obterPlantoesDoServidorJanela(nomeServidor) {
       const mesAno = document.getElementById("escalaMesAno").value;
       const dataBaseStr = document.getElementById("escalaDataBase").value;
       const regimePadrao = document.getElementById("escalaRegime").value;
 
       if (!mesAno || !dataBaseStr || !nomeServidor) return [];
 
-      const [ano, mes] = mesAno.split("-").map(Number);
-      const diasNoMes = new Date(ano, mes, 0).getDate();
+      const [anoInit, mesInit] = mesAno.split("-").map(Number);
       const plantoes = [];
 
-      for (let d = 1; d <= diasNoMes; d++) {
-        const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const resDia = calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao);
+      // Varrer 3 meses seguidos (Mês atual + 2 meses futuros)
+      for (let offset = 0; offset < 3; offset++) {
+        let ano = anoInit;
+        let mes = mesInit + offset;
 
-        if (resDia.cond.includes(nomeServidor) || resDia.tec.includes(nomeServidor)) {
-          plantoes.push(dtIso);
+        while (mes > 12) {
+          mes -= 12;
+          ano += 1;
+        }
+
+        const diasNoMes = new Date(ano, mes, 0).getDate();
+
+        for (let d = 1; d <= diasNoMes; d++) {
+          const dtIso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const resDia = calcularEscalaNoDia(dtIso, dataBaseStr, regimePadrao);
+
+          if (resDia.cond.includes(nomeServidor) || resDia.tec.includes(nomeServidor)) {
+            plantoes.push(dtIso);
+          }
         }
       }
 
       return plantoes;
     }
+
+    const mesesNomesAbrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const diasSemanaAbrev = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
 
     function preencherDatasTrocasForm() {
       const selDataMinha = document.getElementById("trocaDataMinha");
@@ -882,16 +897,21 @@
         return;
       }
 
-      const plantoesMeus = obterPlantoesDoServidorNoMes(usuarioLogado.nome);
+      const plantoesMeus = obterPlantoesDoServidorJanela(usuarioLogado.nome);
 
       if (plantoesMeus.length === 0) {
-        selDataMinha.innerHTML = `<option value="">-- Sem plantão neste mês --</option>`;
+        selDataMinha.innerHTML = `<option value="">-- Sem plantão nos próximos meses --</option>`;
         return;
       }
 
       plantoesMeus.forEach(dtIso => {
-        const dtFmt = dtIso.split('-').reverse().join('/');
-        selDataMinha.innerHTML += `<option value="${dtIso}">${dtFmt} (Meu Plantão)</option>`;
+        const [a, m, d] = dtIso.split('-').map(Number);
+        const dtObj = new Date(a, m - 1, d);
+        const diaSem = diasSemanaAbrev[dtObj.getDay()];
+        const mesNome = mesesNomesAbrev[m - 1];
+        const dtFmt = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${a}`;
+
+        selDataMinha.innerHTML += `<option value="${dtIso}">${dtFmt} (${diaSem}) — ${mesNome}</option>`;
       });
 
       atualizarDatasDevolucaoForm();
@@ -909,16 +929,21 @@
         return;
       }
 
-      const plantoesSubstitutos = obterPlantoesDoServidorNoMes(nomeSubstituto);
+      const plantoesSubstitutos = obterPlantoesDoServidorJanela(nomeSubstituto);
 
       if (plantoesSubstitutos.length === 0) {
-        selDev.innerHTML = `<option value="">-- Substituto sem plantão neste mês --</option>`;
+        selDev.innerHTML = `<option value="">-- Substituto sem plantão nos próximos meses --</option>`;
         return;
       }
 
       plantoesSubstitutos.forEach(dtIso => {
-        const dtFmt = dtIso.split('-').reverse().join('/');
-        selDev.innerHTML += `<option value="${dtIso}">${dtFmt} (Plantão de ${nomeSubstituto})</option>`;
+        const [a, m, d] = dtIso.split('-').map(Number);
+        const dtObj = new Date(a, m - 1, d);
+        const diaSem = diasSemanaAbrev[dtObj.getDay()];
+        const mesNome = mesesNomesAbrev[m - 1];
+        const dtFmt = `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${a}`;
+
+        selDev.innerHTML += `<option value="${dtIso}">${dtFmt} (${diaSem}) — ${mesNome}</option>`;
       });
     }
 
@@ -1252,7 +1277,7 @@
 
     function cancelarEdicaoAfastamento() {
       document.getElementById("afastId").value = "";
-      document.getElementById("formAfastamento").reset();
+      document.getElementById("formFormAfastamento") ? document.getElementById("formAfastamento").reset() : null;
       document.getElementById("containerGradeDias").innerHTML = `<span style="font-size:11px; color:#64748b;">Selecione o servidor e as datas de início/término para gerar os plantões reais.</span>`;
       document.getElementById("tituloFormAfastamento").innerText = "Registrar Licença e Cobertura Diária por Função";
       document.getElementById("btnSalvarAfastamento").innerText = "🏥 Salvar Licença na Nuvem";
@@ -1402,16 +1427,20 @@
       const ehSolicitante = (t.solicitante.trim().toLowerCase() === nomeLogadoNorm);
       const colegaNome = ehSolicitante ? t.substituto : t.solicitante;
 
-      const plantoesColega = obterPlantoesDoServidorNoMes(colegaNome);
+      const plantoesColega = obterPlantoesDoServidorJanela(colegaNome);
 
       if (plantoesColega.length === 0) {
-        alert(`Nenhum plantão oficial encontrado para ${colegaNome} no mês visível da escala.`);
+        alert(`Nenhum plantão oficial encontrado para ${colegaNome} nos próximos meses.`);
         return;
       }
 
       let mensagemData = `DEFINIR PAGAMENTO DA TROCA #${t.id}\nSelecione o número correspondente à data de devolução do plantão de ${colegaNome}:\n\n`;
       plantoesColega.forEach((dtIso, idx) => {
-        mensagemData += `${idx + 1}) ${dtIso.split('-').reverse().join('/')}\n`;
+        const [a, m, d] = dtIso.split('-').map(Number);
+        const dtObj = new Date(a, m - 1, d);
+        const diaSem = diasSemanaAbrev[dtObj.getDay()];
+        const mesNome = mesesNomesAbrev[m - 1];
+        mensagemData += `${idx + 1}) ${dtIso.split('-').reverse().join('/')} (${diaSem}) — ${mesNome}\n`;
       });
 
       const opcao = prompt(mensagemData);
@@ -1765,7 +1794,6 @@
       body.innerHTML = "";
 
       const diasNoMes = new Date(ano, mes, 0).getDate();
-      const diasSemana = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
 
       if (regimePadrao !== "40h" && regimePadrao !== "coren") {
         head.innerHTML = `<tr><th>DIA</th><th>SEMANA</th><th>PERÍODO</th><th>CONDUTOR SOCORRISTA</th><th>TÉCNICO DE ENFERMAGEM</th><th>OBSERVAÇÕES / ALTERAÇÕES</th></tr>`;
@@ -1781,7 +1809,7 @@
           body.innerHTML += `
             <tr class="${fds ? 'col-fds' : ''}">
               <td><b>${dtFmt}</b></td>
-              <td>${diasSemana[dtAtual.getDay()]}</td>
+              <td>${diasSemanaAbrev[dtAtual.getDay()]}</td>
               <td>07h às 07h</td>
               <td><b>${resDia.cond}</b></td>
               <td><b>${resDia.tec}</b></td>
@@ -1823,7 +1851,7 @@
           body.innerHTML += `
             <tr class="${rowClass}">
               <td><b>${dtFmt}</b></td>
-              <td>${diasSemana[dt.getDay()]}</td>
+              <td>${diasSemanaAbrev[dt.getDay()]}</td>
               <td>${hor}</td>
               <td>${serv}</td>
               <td>${obs}</td>
