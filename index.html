@@ -187,7 +187,7 @@
     <button class="tab-btn" id="btnTabAdmin" style="display:none; background: #334155; color: #fff;" onclick="trocarAba('admin')">⚙️ Gestão / Auditoria Admin</button>
   </div>
 
-  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (PÚBLICA LIMPA E GERADOR DINÂMICO) -->
+  <!-- ABA 1: GERADOR E CONSULTA DE ESCALAS (COM SIMULADOR INTELIGENTE DE QUADRO) -->
   <div id="abaEscalas" class="card">
     <div class="grid-form no-print">
       <div class="form-group">
@@ -1380,11 +1380,44 @@
       alterarRegimeVisual(val);
     }
 
-    function simularOuGerarEscala(isSimulacao) {
-      renderizarEscalas();
-      if (isSimulacao) {
-        alert("Simulação aplicada na tela! O resultado abaixo reflete os parâmetros selecionados para você revisar.");
+    // DIAGNÓSTICO INTELIGENTE DE QUADRO E VIABILIDADE
+    function validarQuadroSimulacao() {
+      const regime = document.getElementById("escalaRegime").value;
+      if (regime === "24x96" || regime === "40h" || regime === "coren") return true;
+
+      let ht = 24, hf = 96;
+      if (regime === "24x72") { ht = 24; hf = 72; }
+      else if (regime === "24x48") { ht = 24; hf = 48; }
+      else if (regime === "24x24") { ht = 24; hf = 24; }
+      else if (regime === "12x36") { ht = 12; hf = 36; }
+      else if (regime === "12x48") { ht = 12; hf = 48; }
+      else if (regime === "CUSTOM") {
+        ht = parseInt(document.getElementById("simHorasTrab").value) || 24;
+        hf = parseInt(document.getElementById("simHorasFolga").value) || 48;
       }
+
+      const equipesNecessarias = Math.max(1, Math.round((ht + hf) / ht));
+      const equipesDisponiveis = duplasPadrao.length; // 5 Duplas
+
+      if (equipesNecessarias === equipesDisponiveis) {
+        alert(`✅ SIMULAÇÃO VIÁVEL!\n\n• Regime Escolhido: ${ht}x${hf}\n• Necessidade Operacional: ${equipesNecessarias} duplas/equipes.\n• Quadro Atual: ${equipesDisponiveis} duplas na USB 11.\n\nO ciclo fecha em 100% sem sobras ou furos na cobertura.`);
+        return true;
+      } else if (equipesDisponiveis > equipesNecessarias) {
+        const sobra = equipesDisponiveis - equipesNecessarias;
+        alert(`⚠️ DIAGNÓSTICO: EQUIPES EM EXCESSO!\n\n• Regime Escolhido: ${ht}x${hf}\n• Necessidade Operacional: ${equipesNecessarias} duplas/equipes.\n• Quadro Atual: ${equipesDisponiveis} duplas na USB 11.\n\nSobram ${sobra} dupla(s) para este regime. Se aplicar continuamente, ${sobra} equipe(s) ficará(ão) ociosa(s) fora do rodízio.`);
+        return true;
+      } else {
+        const falta = equipesNecessarias - equipesDisponiveis;
+        alert(`❌ DIAGNÓSTICO: FALTAM EQUIPES!\n\n• Regime Escolhido: ${ht}x${hf}\n• Necessidade Operacional: ${equipesNecessarias} duplas/equipes.\n• Quadro Atual: ${equipesDisponiveis} duplas na USB 11.\n\nFALTAM ${falta} dupla(s) no quadro para sustentar este ciclo de plantão sem deixar dias descobertos.`);
+        return false;
+      }
+    }
+
+    function simularOuGerarEscala(isSimulacao) {
+      if (isSimulacao) {
+        validarQuadroSimulacao();
+      }
+      renderizarEscalas();
     }
 
     function resetarSimulacao() {
