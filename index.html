@@ -270,7 +270,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Substituto (Quem vai cobrir)</label>
+          <label>Substituto (Mesma Categoria)</label>
           <select id="trocaSubstituto" required></select>
         </div>
         <div class="form-group">
@@ -723,7 +723,10 @@
 
           const { data: tData, error: tErr } = await dbNuvem.from('trocas').select('*');
           if (tData && !tErr && tData.length > 0) {
-            trocas = tData;
+            // Mescla sem perder trocas locais recentes
+            const idsRemotos = new Set(tData.map(t => t.id));
+            const trocasApenasLocais = trocas.filter(t => !idsRemotos.has(t.id));
+            trocas = [...tData, ...trocasApenasLocais];
             localStorage.setItem('samu_trocas_v20', JSON.stringify(trocas));
           }
 
@@ -740,7 +743,7 @@
 
           document.getElementById("stNuvem").innerText = "☁️ Nuvem Supabase Sincronizada";
         } catch(e) {
-          console.warn("Erro sincronizando nuvem:", e);
+          console.warn("Aviso de sincronização:", e);
         }
       }
 
@@ -780,7 +783,7 @@
       if (dbNuvem) {
         try {
           const { error } = await dbNuvem.from('trocas').upsert(trocas);
-          if (error) console.warn("Supabase trocas error:", error.message);
+          if (error) console.warn("Erro ao sincronizar trocas na nuvem:", error.message);
         } catch(e) {
           console.error("Erro salvando trocas no Supabase:", e);
         }
@@ -846,6 +849,10 @@
       document.getElementById("btnTabColaboradores").classList.toggle("active", aba === 'colaboradores');
       document.getElementById("btnTabAfastamentos").classList.toggle("active", aba === 'afastamentos');
       document.getElementById("btnTabAdmin").classList.toggle("active", aba === 'admin');
+
+      if (aba === 'trocas') {
+        preencherSelectsSubstitutosTroca();
+      }
     }
 
     function alterarRegimeVisual(val) {
@@ -984,15 +991,50 @@
 
     function preencherSelects() {
       ordenarAlfabeticamente();
-      const selSubst = document.getElementById("trocaSubstituto");
+      preencherSelectsSubstitutosTroca();
+
       const selAfast = document.getElementById("afastServidor");
+      if (selAfast) {
+        selAfast.innerHTML = "";
+        colaboradores.forEach(c => {
+          selAfast.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
+        });
+      }
+    }
 
-      if (selSubst) selSubst.innerHTML = "";
-      if (selAfast) selAfast.innerHTML = "";
+    // FILTRO RIGOROSO POR CATEGORIA (SÓ CONDUTOR COM CONDUTOR / TÉCNICO COM TÉCNICO)
+    function preencherSelectsSubstitutosTroca() {
+      const selSubst = document.getElementById("trocaSubstituto");
+      if (!selSubst) return;
 
-      colaboradores.forEach(c => {
-        if (selSubst) selSubst.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
-        if (selAfast) selAfast.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
+      selSubst.innerHTML = "";
+
+      if (!usuarioLogado) {
+        selSubst.innerHTML = `<option value="">-- Faça login primeiro --</option>`;
+        return;
+      }
+
+      const fUser = usuarioLogado.funcao.toLowerCase();
+      const ehCondutor = fUser.includes("condutor");
+
+      const colegasMesmaCategoria = colaboradores.filter(c => {
+        if (c.nome === usuarioLogado.nome) return false; // Não pode trocar com ele mesmo
+        const fCol = c.funcao.toLowerCase();
+
+        if (ehCondutor) {
+          return fCol.includes("condutor");
+        } else {
+          return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("coordenadora");
+        }
+      });
+
+      if (colegasMesmaCategoria.length === 0) {
+        selSubst.innerHTML = `<option value="">-- Nenhum colega da mesma categoria --</option>`;
+        return;
+      }
+
+      colegasMesmaCategoria.forEach(c => {
+        selSubst.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
       });
     }
 
@@ -1025,12 +1067,12 @@
 
       const afEhCondutor = fAf.includes("condutor");
       if (afEhCondutor) {
-        return fCol.includes("condutor") || nomeColega === "Daniel Alexandre Fernandes";
+        return fCol.includes("condutor");
       }
 
       const afEhTecnico = fAf.includes("técnic") || fAf.includes("enfermeir");
       if (afEhTecnico) {
-        return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("coordenadora") && nomeColega !== "Daniel Alexandre Fernandes";
+        return (fCol.includes("técnic") || fCol.includes("enfermeir")) && !fCol.includes("coordenadora");
       }
 
       return false;
@@ -1239,7 +1281,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (CORRIGIDO PARA SUPABASE E LOCALSTORAGE)
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (ESTRUTURA INTEGRADA PARA GESTOR E SUBSTITUTO)
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1256,18 +1298,29 @@
 
     async function solicitarTroca(e) {
       e.preventDefault();
+      if (!usuarioLogado) {
+        alert("Você precisa estar logado para solicitar trocas.");
+        return;
+      }
+
       const idEdit = document.getElementById("trocaIdEdit").value;
       const tipo = document.getElementById("trocaTipo").value;
       const dataDev = document.getElementById("trocaDataDevolucao").value;
       const periodo = document.getElementById("trocaPeriodo").value;
       const quitarId = document.getElementById("trocaQuitarId").value;
+      const substitutoEscolhido = document.getElementById("trocaSubstituto").value;
 
-      if (tipo === "Direta" && !dataDev) {
-        alert("A data de devolução é obrigatória em trocas por troca!");
+      if (!substitutoEscolhido || substitutoEscolhido.includes("Nenhum") || substitutoEscolhido.includes("login")) {
+        alert("Selecione um substituto válido da mesma categoria.");
         return;
       }
 
-      const nomeSolicitante = usuarioLogado ? usuarioLogado.nome : "Servidor Desconhecido";
+      if (tipo === "Direta" && !dataDev) {
+        alert("A data de devolução é obrigatória em trocas diretas!");
+        return;
+      }
+
+      const nomeSolicitante = usuarioLogado.nome;
 
       if (quitarId) {
         const trocaAntiga = trocas.find(t => t.id == quitarId);
@@ -1282,43 +1335,37 @@
         if (idx !== -1 && trocas[idx].status === "PENDENTE") {
           trocas[idx].dataMinha = document.getElementById("trocaDataMinha").value;
           trocas[idx].periodo = periodo;
-          trocas[idx].substituto = document.getElementById("trocaSubstituto").value;
+          trocas[idx].substituto = substitutoEscolhido;
           trocas[idx].tipo = tipo;
           trocas[idx].dataDevolucao = dataDev || "A HAVER";
           trocas[idx].motivo = document.getElementById("trocaMotivo").value;
-          alert("Solicitação de troca atualizada!");
+          alert("Solicitação de troca atualizada com sucesso!");
         }
       } else {
+        const novoId = Date.now();
         const novaTrocaObj = {
+          id: novoId,
           solicitante: nomeSolicitante,
           dataMinha: document.getElementById("trocaDataMinha").value,
           periodo: periodo,
-          substituto: document.getElementById("trocaSubstituto").value,
+          substituto: substitutoEscolhido,
           tipo: tipo,
           dataDevolucao: dataDev || "A HAVER",
           motivo: document.getElementById("trocaMotivo").value,
           status: "PENDENTE"
         };
 
+        trocas.push(novaTrocaObj);
+
         if (dbNuvem) {
           try {
-            const { data, error } = await dbNuvem.from('trocas').insert([novaTrocaObj]).select();
-            if (!error && data && data.length > 0) {
-              trocas.push(data[0]);
-            } else {
-              novaTrocaObj.id = Date.now();
-              trocas.push(novaTrocaObj);
-            }
+            await dbNuvem.from('trocas').insert([novaTrocaObj]);
           } catch (err) {
-            novaTrocaObj.id = Date.now();
-            trocas.push(novaTrocaObj);
+            console.warn("Gravando localmente após falha na nuvem:", err);
           }
-        } else {
-          novaTrocaObj.id = Date.now();
-          trocas.push(novaTrocaObj);
         }
 
-        alert("Solicitação gravada com sucesso! O substituto já pode visualizar a troca.");
+        alert(`Solicitação de troca enviada com sucesso! Ela está disponível para o substituto (${substitutoEscolhido}) e para a Gestão.`);
       }
 
       await salvarTrocasStorage();
@@ -1335,7 +1382,10 @@
         document.getElementById("trocaIdEdit").value = t.id;
         document.getElementById("trocaDataMinha").value = t.dataMinha;
         document.getElementById("trocaPeriodo").value = t.periodo || "24h";
+        
+        preencherSelectsSubstitutosTroca();
         document.getElementById("trocaSubstituto").value = t.substituto;
+        
         document.getElementById("trocaTipo").value = t.tipo;
         toggleTipoTroca();
         if (t.tipo === "Direta") document.getElementById("trocaDataDevolucao").value = t.dataDevolucao;
@@ -1355,10 +1405,11 @@
       document.getElementById("tituloFormTroca").innerText = "Solicitar / Editar Troca de Plantão";
       document.getElementById("btnSalvarTroca").innerText = "📩 Enviar Solicitação para a Nuvem";
       document.getElementById("btnCancelarTroca").style.display = "none";
+      preencherSelectsSubstitutosTroca();
     }
 
     async function responderTroca(id, aprovar) {
-      const t = trocas.find(item => item.id === id);
+      const t = trocas.find(item => item.id == id);
       if (t) {
         t.status = aprovar ? "APROVADO" : "RECUSADO";
         await salvarTrocasStorage();
@@ -1375,20 +1426,27 @@
       return "🔄 24h Integral";
     }
 
+    // LISTAGEM DE TROCAS PARA O USUÁRIO E SUBSTITUTO
     function renderizarTabelaTrocas() {
       const tb = document.getElementById("tbTrocas");
       if (!tb) return;
       tb.innerHTML = "";
 
-      const f = usuarioLogado ? usuarioLogado.funcao.toLowerCase() : "";
-      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || (usuarioLogado && usuarioLogado.cpf.replace(/\D/g, '') === "07548636970");
+      if (!usuarioLogado) {
+        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Faça login para visualizar suas trocas.</td></tr>`;
+        return;
+      }
 
+      const f = usuarioLogado.funcao.toLowerCase();
+      const ehGestor = f.includes("coordenadora") || f.includes("administrativo") || f.includes("master") || usuarioLogado.cpf.replace(/\D/g, '') === "07548636970";
+
+      // Mostra as trocas onde o usuário é SOLICITANTE ou SUBSTITUTO (se for Gestor, mostra todas)
       const trocasFiltradas = ehGestor ? trocas : trocas.filter(t => 
-        usuarioLogado && (t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome)
+        t.solicitante === usuarioLogado.nome || t.substituto === usuarioLogado.nome
       );
 
       if (trocasFiltradas.length === 0) {
-        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca de plantão encontrada para o seu perfil.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca encontrada.</td></tr>`;
         return;
       }
 
@@ -1400,8 +1458,8 @@
         if (t.status === "PAGO / QUITADO") stBadge = `<span class="badge badge-quitado">Pago / Quitado</span>`;
 
         let acoes = "-";
-        const ehSubstituto = usuarioLogado && (usuarioLogado.nome === t.substituto);
-        const ehSolicitante = usuarioLogado && (usuarioLogado.nome === t.solicitante);
+        const ehSubstituto = (usuarioLogado.nome === t.substituto);
+        const ehSolicitante = (usuarioLogado.nome === t.solicitante);
 
         if (t.status === "PENDENTE") {
           if (ehSubstituto || ehGestor) {
@@ -1417,12 +1475,12 @@
         tb.innerHTML += `
           <tr>
             <td>#${t.id}</td>
-            <td style="text-align:left;">${t.solicitante}</td>
-            <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td style="text-align:left;"><b>${t.solicitante}</b></td>
+            <td><b>${t.dataMinha ? t.dataMinha.split('-').reverse().join('/') : '-'}</b></td>
             <td>${formatarPeriodo(t.periodo)}</td>
-            <td style="text-align:left;">${t.substituto}</td>
+            <td style="text-align:left;"><b>${t.substituto}</b></td>
             <td>${t.tipo}</td>
-            <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
+            <td>${(t.dataDevolucao && t.dataDevolucao !== "A HAVER") ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
             <td style="text-align:left;">${t.motivo}</td>
             <td>${stBadge}</td>
             <td>${acoes}</td>
@@ -1431,9 +1489,9 @@
       });
     }
 
-    // PAINEL ADMINISTRADOR
+    // PAINEL ADMINISTRADOR (LISTAGEM INTEGRAL DE TROCAS PARA O GESTOR)
     async function adminCancelarTroca(id) {
-      const t = trocas.find(item => item.id === id);
+      const t = trocas.find(item => item.id == id);
       if (t) {
         const justificativa = prompt(`Informe a justificativa administrativa para cancelar a troca #${id}:`);
         if (justificativa && justificativa.trim() !== "") {
@@ -1449,7 +1507,7 @@
     }
 
     async function adminEditarTroca(id) {
-      const t = trocas.find(item => item.id === id);
+      const t = trocas.find(item => item.id == id);
       if (t) {
         const novaDataMinha = prompt("Nova Data do Plantão (AAAA-MM-DD):", t.dataMinha);
         const novaDataDev = prompt("Nova Data de Devolução (AAAA-MM-DD ou A HAVER):", t.dataDevolucao);
@@ -1480,11 +1538,11 @@
         tb.innerHTML += `
           <tr>
             <td>#${t.id}</td>
-            <td style="text-align:left;">${t.solicitante}</td>
-            <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td style="text-align:left;"><b>${t.solicitante}</b></td>
+            <td><b>${t.dataMinha ? t.dataMinha.split('-').reverse().join('/') : '-'}</b></td>
             <td>${formatarPeriodo(t.periodo)}</td>
-            <td style="text-align:left;">${t.substituto}</td>
-            <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
+            <td style="text-align:left;"><b>${t.substituto}</b></td>
+            <td>${(t.dataDevolucao && t.dataDevolucao !== "A HAVER") ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
             <td>${stBadge}</td>
             <td style="text-align:left;">${t.motivo}</td>
             <td>
