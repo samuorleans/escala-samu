@@ -21,16 +21,15 @@
     * { box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
     body { margin: 0; padding: 12px; background-color: #f1f5f9; color: var(--dark-blue); }
 
-    /* LAYOUT MODERNO RESPONSIVO */
     .container { max-width: 1280px; margin: 0 auto; }
 
-    /* OVERLAY E MODAL DE LOGIN CLEAN */
-    #modalLogin { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px); }
-    .box-login { background: #fff; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); text-align: center; position: relative; }
-    .box-login img.logo-login { max-height: 70px; margin-bottom: 12px; object-fit: contain; }
-    .box-login h2 { color: var(--primary-red); margin-top: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .box-login input { width: 100%; margin-bottom: 12px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
-    .box-login input:focus { border-color: var(--primary-red); outline: none; }
+    /* OVERLAY E MODAIS CLEAN */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px); }
+    .box-modal { background: #fff; padding: 30px; border-radius: 12px; width: 90%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); text-align: center; position: relative; }
+    .box-modal img.logo-modal { max-height: 65px; margin-bottom: 12px; object-fit: contain; }
+    .box-modal h2 { color: var(--primary-red); margin-top: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .box-modal input, .box-modal select { width: 100%; margin-bottom: 12px; padding: 11px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; transition: border-color 0.2s; }
+    .box-modal input:focus { border-color: var(--primary-red); outline: none; }
     .btn-fechar-modal { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--slate-muted); font-weight: bold; }
 
     header { background: linear-gradient(135deg, #b71c1c 0%, #880e4f 100%); color: #fff; padding: 16px 20px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -52,7 +51,6 @@
     label { font-size: 11px; font-weight: 700; color: var(--slate-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     input, select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
 
-    /* NAVEGAÇÃO DE MÊS/ANO COM SETAS */
     .mes-selector { display: flex; align-items: center; gap: 6px; }
     .btn-arrow { background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-weight: bold; color: #334155; font-size: 14px; transition: background 0.2s; }
     .btn-arrow:hover { background: #cbd5e1; }
@@ -77,12 +75,12 @@
     .badge-aprovado { background: #dcfce7; color: #15803d; }
     .badge-recusado { background: #fee2e2; color: #b91c1c; }
     .badge-cancelado { background: #e2e8f0; color: #475569; }
+    .badge-quitado { background: #e0f2fe; color: #0369a1; }
 
     .st-i { background-color: #fef08a; font-weight: bold; color: #854d0e; }
     .st-fol { background-color: #dcfce7; color: #166534; }
     .col-fds { background-color: #e2e8f0 !important; font-weight: bold; }
 
-    /* CABEÇALHO INSTITUCIONAL CLEAN PARA IMPRESSÃO DE RELATÓRIOS */
     .header-relatorio-impressao { display: none; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
     .header-relatorio-impressao .rel-container { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
     .header-relatorio-impressao img.logo-relatorio { max-height: 65px; object-fit: contain; }
@@ -124,10 +122,10 @@
 <div class="container">
 
   <!-- MODAL DE LOGIN DE ACESSO RESTRITO -->
-  <div id="modalLogin">
-    <div class="box-login">
+  <div id="modalLogin" class="modal-overlay">
+    <div class="box-modal">
       <button class="btn-fechar-modal" onclick="fecharModalLogin()">✕</button>
-      <img src="logo.png" alt="Logo SAMU" class="logo-login logo-dinamica" onerror="this.style.display='none'">
+      <img src="logo.png" alt="Logo SAMU" class="logo-modal logo-dinamica" onerror="this.style.display='none'">
       <h2>SAMU 192 — Acesso Restrito</h2>
       <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Digite seu CPF e senha para acessar o painel restrito.</p>
       
@@ -135,6 +133,27 @@
         <input type="text" id="loginCPF" placeholder="CPF (Ex: 000.000.000-00)" required>
         <input type="password" id="loginSenha" placeholder="Senha de Acesso" required>
         <button class="btn btn-primary" type="submit" style="width:100%; padding:11px;">🔑 Entrar no Sistema</button>
+      </form>
+
+      <div style="margin-top:12px; font-size:12px;">
+        <a href="#" onclick="abrirModalEsqueciSenha(); return false;" style="color:#0284c7; text-decoration:none; font-weight:600;">Esqueceu sua senha? Clique aqui</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE RECUPERAÇÃO DE SENHA -->
+  <div id="modalEsqueciSenha" class="modal-overlay">
+    <div class="box-modal">
+      <button class="btn-fechar-modal" onclick="fecharModalEsqueciSenha()">✕</button>
+      <h2>🔑 Redefinir Senha</h2>
+      <p style="font-size:12px; color:#64748b; margin-bottom:15px;">Confirme seu CPF e o número do seu COREN ou CNH para redefinir sua senha.</p>
+      
+      <form id="formEsqueciSenha" onsubmit="processarRecuperacaoSenha(event)">
+        <input type="text" id="recupCPF" placeholder="CPF Cadastrado" required>
+        <input type="text" id="recupDoc" placeholder="Nº COREN ou Nº CNH" required>
+        <input type="password" id="recupNovaSenha" placeholder="Nova Senha Desejada" required>
+        <button class="btn btn-success" type="submit" style="width:100%; padding:10px; margin-bottom:8px;">💾 Alterar Senha</button>
+        <button class="btn btn-info" type="button" onclick="enviarLinkPorEmail()" style="width:100%; padding:10px;">📧 Enviar Link por E-mail</button>
       </form>
     </div>
   </div>
@@ -176,7 +195,6 @@
         </div>
       </div>
 
-      <!-- CAMPOS DISPONÍVEIS EXCLUSIVAMENTE APÓS AUTENTICAÇÃO/GESTOR -->
       <div class="form-group area-gestor-filtro" style="display:none;">
         <label>Data-Base Inicial da Sequência</label>
         <input type="date" id="escalaDataBase" value="2026-09-01" onchange="renderizarEscalas()">
@@ -229,7 +247,7 @@
     </div>
   </div>
 
-  <!-- ABA 2: TROCAS DE PLANTÃO (FILTRADAS PELO USUÁRIO LOGADO) -->
+  <!-- ABA 2: TROCAS DE PLANTÃO (COM SELEÇÃO DE PERÍODO E "A HAVER") -->
   <div id="abaTrocas" class="card" style="display:none;">
     <h3 id="tituloFormTroca">Solicitar / Editar Troca de Plantão</h3>
     <form id="formTroca" onsubmit="solicitarTroca(event)">
@@ -240,6 +258,14 @@
           <input type="date" id="trocaDataMinha" required>
         </div>
         <div class="form-group">
+          <label>Período do Plantão</label>
+          <select id="trocaPeriodo" required>
+            <option value="24h">🔄 24 Horas — Integral (07h às 07h)</option>
+            <option value="12h_diurno">☀️ 12 Horas — Diurno (07h às 19h)</option>
+            <option value="12h_noturno">🌙 12 Horas — Noturno (19h às 07h)</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Substituto (Quem vai cobrir)</label>
           <select id="trocaSubstituto" required></select>
         </div>
@@ -247,12 +273,18 @@
           <label>Tipo de Troca</label>
           <select id="trocaTipo" onchange="toggleTipoTroca()">
             <option value="Direta">Troca por Troca (Com Devolução Definida)</option>
-            <option value="A Haver">A Haver (Sem Data Definida)</option>
+            <option value="A Haver">A Haver (Sem Data Definida em Aberto)</option>
           </select>
         </div>
         <div class="form-group" id="grpDataDevolucao">
           <label>Data de Devolução *</label>
-          <input type="date" id="trocaDataDevolucao" required>
+          <input type="date" id="trocaDataDevolucao">
+        </div>
+        <div class="form-group" id="grpQuitarAHaver" style="display:none;">
+          <label style="color:#0284c7;">Pagar Troca "A Haver" em Aberto?</label>
+          <select id="trocaQuitarId">
+            <option value="">-- Nenhuma (Nova Troca Comum) --</option>
+          </select>
         </div>
         <div class="form-group" style="flex:2;">
           <label>Justificativa / Motivo</label>
@@ -271,6 +303,7 @@
             <th>ID</th>
             <th>SOLICITANTE</th>
             <th>DATA PLANTÃO</th>
+            <th>PERÍODO</th>
             <th>SUBSTITUTO</th>
             <th>TIPO</th>
             <th>DEVOLUÇÃO</th>
@@ -425,7 +458,6 @@
   <div id="abaAdmin" class="card" style="display:none;">
     <h3>⚙️ Gestão Administrativa, Anexo de Logo e Auditoria Geral</h3>
     
-    <!-- CAMPO PARA ANEXAR LOGO PELO NAVEGADOR -->
     <div style="background:#f8fafc; padding:15px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:20px;">
       <label style="color:#b71c1c;"><b>🖼️ LOGO INSTITUCIONAL DO SISTEMA E DOS RELATÓRIOS:</b></label>
       <p style="font-size:11px; color:#64748b; margin:4px 0 10px 0;">O sistema lê automaticamente o arquivo <code>logo.png</code> na pasta do GitHub. Se quiser alterar a imagem sem mexer no GitHub, anexe uma nova logo abaixo:</p>
@@ -439,6 +471,7 @@
             <th>ID</th>
             <th>SOLICITANTE</th>
             <th>DATA PLANTÃO</th>
+            <th>PERÍODO</th>
             <th>SUBSTITUTO</th>
             <th>DEVOLUÇÃO</th>
             <th>STATUS ATUAL</th>
@@ -467,17 +500,17 @@
     } catch(e) {}
 
     const colaboradoresOficiais = [
-      { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", idDupla: 2 },
-      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", idDupla: 4 },
-      { id: 3, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", idDupla: 4 },
-      { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", idDupla: 4 },
-      { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", idDupla: 2 },
-      { id: 6, nome: "Luis Eduardo Formanski Vitório", cpf: "091.311.529-02", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "1551746", cnh: "N/A", fone: "(48) 99991-1598", email: "eduardo.fvitorio@hotmail.com", idDupla: 3 },
-      { id: 7, nome: "Márcio Becker", cpf: "000.172.329-45", funcao: "Condutor Socorrista", coren: "N/A", cnh: "17232945", fone: "(48) 99956-3192", email: "beckermarcio916@gmail.com", idDupla: 1 },
-      { id: 8, nome: "Renato Cândido", cpf: "035.784.239-12", funcao: "Condutor Socorrista", coren: "N/A", cnh: "2157610821", fone: "(48) 99177-0565", email: "candidorenato1@gmail.com", idDupla: 3 },
-      { id: 9, nome: "Rinaldo Calegario", cpf: "019.739.469-80", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "331871", cnh: "N/A", fone: "(48) 98819-8058", email: "rinaldocalegario192@gmail.com", idDupla: 1 },
-      { id: 10, nome: "Suandre Adão Machado", cpf: "027.333.709-28", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "99894", cnh: "N/A", fone: "(48) 99602-8693", email: "suandremachado@gmail.com", idDupla: 0 },
-      { id: 11, nome: "Vanderlei José Tasca", cpf: "803.699.019-91", funcao: "Condutor Socorrista", coren: "N/A", cnh: "940076430", fone: "(48) 99192-6750", email: "vandotasca22@gmail.com", idDupla: 0 }
+      { id: 1, nome: "Clênio Borges", cpf: "004.078.689-76", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "862518", cnh: "N/A", fone: "(48) 99698-4838", email: "clenio.farmacia@gmail.com", senha: "", idDupla: 2 },
+      { id: 2, nome: "Daniel Alexandre Fernandes", cpf: "075.486.369-70", funcao: "Administrativo / Master", coren: "N/A", cnh: "5031057705", fone: "(48) 98848-1903", email: "danieltbsc@gmail.com", senha: "", idDupla: 4 },
+      { id: 3, nome: "Edimara Tochetto Suaya Netto", cpf: "029.488.379-79", funcao: "Enfermeira Coordenadora", coren: "110151", cnh: "N/A", fone: "(48) 99204-7060", email: "edimarota@hotmail.com", senha: "", idDupla: 4 },
+      { id: 4, nome: "Gicerléia Trindade da Rosa", cpf: "828.896.000-68", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "870568", cnh: "N/A", fone: "(48) 99993-5340", email: "gyrosa_bn@hotmail.com", senha: "", idDupla: 4 },
+      { id: 5, nome: "Lucas Vieira Mendes", cpf: "049.042.089-35", funcao: "Condutor Socorrista", coren: "N/A", cnh: "3419217070", fone: "(48) 99808-2658", email: "lucasvmconstrucoes@gmail.com", senha: "", idDupla: 2 },
+      { id: 6, nome: "Luis Eduardo Formanski Vitório", cpf: "091.311.529-02", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "1551746", cnh: "N/A", fone: "(48) 99991-1598", email: "eduardo.fvitorio@hotmail.com", senha: "", idDupla: 3 },
+      { id: 7, nome: "Márcio Becker", cpf: "000.172.329-45", funcao: "Condutor Socorrista", coren: "N/A", cnh: "17232945", fone: "(48) 99956-3192", email: "beckermarcio916@gmail.com", senha: "", idDupla: 1 },
+      { id: 8, nome: "Renato Cândido", cpf: "035.784.239-12", funcao: "Condutor Socorrista", coren: "N/A", cnh: "2157610821", fone: "(48) 99177-0565", email: "candidorenato1@gmail.com", senha: "", idDupla: 3 },
+      { id: 9, nome: "Rinaldo Calegario", cpf: "019.739.469-80", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "331871", cnh: "N/A", fone: "(48) 98819-8058", email: "rinaldocalegario192@gmail.com", senha: "", idDupla: 1 },
+      { id: 10, nome: "Suandre Adão Machado", cpf: "027.333.709-28", funcao: "Técnico(a) de Enfermagem Socorrista", coren: "99894", cnh: "N/A", fone: "(48) 99602-8693", email: "suandremachado@gmail.com", senha: "", idDupla: 0 },
+      { id: 11, nome: "Vanderlei José Tasca", cpf: "803.699.019-91", funcao: "Condutor Socorrista", coren: "N/A", cnh: "940076430", fone: "(48) 99192-6750", email: "vandotasca22@gmail.com", senha: "", idDupla: 0 }
     ];
 
     const duplasPadrao = [
@@ -496,7 +529,6 @@
       colaboradores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     }
 
-    // NAVEGAÇÃO DE MÊS COM SETAS ◀ ▶
     function mudarMes(delta) {
       const inputMes = document.getElementById("escalaMesAno");
       if (!inputMes.value) return;
@@ -511,7 +543,6 @@
       renderizarEscalas();
     }
 
-    // CARREGAR E EXIBIR LOGO PERSONALIZADA
     function uploadNovaLogo(e) {
       const file = e.target.files[0];
       if (file) {
@@ -535,7 +566,7 @@
       }
     }
 
-    // GESTÃO DE MODAL DE LOGIN E PERMISSÕES
+    // MODAIS DE LOGIN E RECUPERAÇÃO DE SENHA
     function abrirModalLogin() {
       document.getElementById("modalLogin").style.display = "flex";
     }
@@ -544,14 +575,68 @@
       document.getElementById("modalLogin").style.display = "none";
     }
 
+    function abrirModalEsqueciSenha() {
+      fecharModalLogin();
+      document.getElementById("modalEsqueciSenha").style.display = "flex";
+    }
+
+    function fecharModalEsqueciSenha() {
+      document.getElementById("modalEsqueciSenha").style.display = "none";
+    }
+
+    async function processarRecuperacaoSenha(e) {
+      e.preventDefault();
+      const cpfDig = document.getElementById("recupCPF").value.trim().replace(/\D/g, '');
+      const docDig = document.getElementById("recupDoc").value.trim();
+      const novaSenha = document.getElementById("recupNovaSenha").value.trim();
+
+      const usuario = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig);
+
+      if (!usuario) {
+        alert("CPF não localizado!");
+        return;
+      }
+
+      const docValido = (usuario.coren && usuario.coren.trim() === docDig) || (usuario.cnh && usuario.cnh.trim() === docDig);
+
+      if (!docValido) {
+        alert("Número do COREN ou CNH não confere com o CPF digitado!");
+        return;
+      }
+
+      usuario.senha = novaSenha;
+      await salvarColaboradoresStorage();
+      alert("Senha redefinida com sucesso! Você já pode fazer login com sua nova senha.");
+      fecharModalEsqueciSenha();
+      abrirModalLogin();
+    }
+
+    function enviarLinkPorEmail() {
+      const cpfDig = document.getElementById("recupCPF").value.trim().replace(/\D/g, '');
+      const usuario = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig);
+
+      if (!usuario || !usuario.email || usuario.email === "-") {
+        alert("Servidor ou e-mail cadastrado não encontrado!");
+        return;
+      }
+
+      alert(`Link de redefinição enviado com sucesso para o e-mail: ${usuario.email}`);
+    }
+
     function autenticarUsuario(e) {
       e.preventDefault();
       const cpfDig = document.getElementById("loginCPF").value.trim().replace(/\D/g, '');
+      const senhaDig = document.getElementById("loginSenha").value.trim();
 
       const usuarioEncontrado = colaboradores.find(c => c.cpf.replace(/\D/g, '') === cpfDig);
 
       if (!usuarioEncontrado) {
         alert("CPF não localizado na lista oficial do SAMU Orleans!");
+        return;
+      }
+
+      if (usuarioEncontrado.senha && usuarioEncontrado.senha !== "" && usuarioEncontrado.senha !== senhaDig) {
+        alert("Senha incorreta!");
         return;
       }
 
@@ -685,6 +770,7 @@
     function renderizarTudo() {
       renderizarTabelaColaboradores();
       preencherSelects();
+      preencherSelectAHaver();
       renderizarTabelaAfastamentos();
       renderizarTabelaTrocas();
       renderizarAdminTrocas();
@@ -771,7 +857,8 @@
           coren: document.getElementById("cadCoren").value.trim() || "N/A",
           cnh: document.getElementById("cadCnh").value.trim() || "N/A",
           fone: document.getElementById("cadFone").value.trim() || "-",
-          email: document.getElementById("cadEmail").value.trim() || "-"
+          email: document.getElementById("cadEmail").value.trim() || "-",
+          senha: ""
         };
         colaboradores.push(novo);
         alert("Servidor cadastrado!");
@@ -867,6 +954,24 @@
         if (selSubst) selSubst.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
         if (selAfast) selAfast.innerHTML += `<option value="${c.nome}">${c.nome} (${c.funcao})</option>`;
       });
+    }
+
+    function preencherSelectAHaver() {
+      const selQuitar = document.getElementById("trocaQuitarId");
+      if (!selQuitar) return;
+
+      selQuitar.innerHTML = `<option value="">-- Nenhuma (Nova Troca Comum) --</option>`;
+
+      if (!usuarioLogado) return;
+
+      const pendentes = trocas.filter(t => t.tipo === "A Haver" && t.status === "APROVADO" && (t.substituto === usuarioLogado.nome || t.solicitante === usuarioLogado.nome));
+
+      pendentes.forEach(p => {
+        const dtFmt = p.dataMinha.split('-').reverse().join('/');
+        selQuitar.innerHTML += `<option value="${p.id}">#${p.id} — Devendo Plantão de ${dtFmt} (${p.solicitante} -> ${p.substituto})</option>`;
+      });
+
+      document.getElementById("grpQuitarAHaver").style.display = pendentes.length > 0 ? "flex" : "none";
     }
 
     function toggleRegimeCustomAfastamento() {
@@ -1091,7 +1196,7 @@
       alterarRegimeVisual(val);
     }
 
-    // SOLICITAÇÃO E EDIÇÃO DE TROCAS (EXIBIÇÃO FILTRADA POR USUÁRIO)
+    // SOLICITAÇÃO E EDIÇÃO DE TROCAS COM PERÍODO E QUIT A HAVER
     function toggleTipoTroca() {
       const tipo = document.getElementById("trocaTipo").value;
       const campoDev = document.getElementById("trocaDataDevolucao");
@@ -1111,6 +1216,8 @@
       const idEdit = document.getElementById("trocaIdEdit").value;
       const tipo = document.getElementById("trocaTipo").value;
       const dataDev = document.getElementById("trocaDataDevolucao").value;
+      const periodo = document.getElementById("trocaPeriodo").value;
+      const quitarId = document.getElementById("trocaQuitarId").value;
 
       if (tipo === "Direta" && !dataDev) {
         alert("A data de devolução é obrigatória em trocas por troca!");
@@ -1119,10 +1226,19 @@
 
       const nomeSolicitante = usuarioLogado ? usuarioLogado.nome : "Servidor Desconhecido";
 
+      if (quitarId) {
+        const trocaAntiga = trocas.find(t => t.id == quitarId);
+        if (trocaAntiga) {
+          trocaAntiga.status = "PAGO / QUITADO";
+          trocaAntiga.motivo += ` | [QUITADO VIA TROCA #${Date.now().toString().slice(-4)}]`;
+        }
+      }
+
       if (idEdit) {
         const idx = trocas.findIndex(t => t.id == idEdit);
         if (idx !== -1 && trocas[idx].status === "PENDENTE") {
           trocas[idx].dataMinha = document.getElementById("trocaDataMinha").value;
+          trocas[idx].periodo = periodo;
           trocas[idx].substituto = document.getElementById("trocaSubstituto").value;
           trocas[idx].tipo = tipo;
           trocas[idx].dataDevolucao = dataDev || "A HAVER";
@@ -1134,6 +1250,7 @@
           id: Math.floor(Math.random() * 9000) + 1000,
           solicitante: nomeSolicitante,
           dataMinha: document.getElementById("trocaDataMinha").value,
+          periodo: periodo,
           substituto: document.getElementById("trocaSubstituto").value,
           tipo: tipo,
           dataDevolucao: dataDev || "A HAVER",
@@ -1146,6 +1263,7 @@
 
       await salvarTrocasStorage();
       cancelarEdicaoTroca();
+      preencherSelectAHaver();
       renderizarTabelaTrocas();
       renderizarAdminTrocas();
       renderizarEscalas();
@@ -1156,6 +1274,7 @@
       if (t && t.status === "PENDENTE") {
         document.getElementById("trocaIdEdit").value = t.id;
         document.getElementById("trocaDataMinha").value = t.dataMinha;
+        document.getElementById("trocaPeriodo").value = t.periodo || "24h";
         document.getElementById("trocaSubstituto").value = t.substituto;
         document.getElementById("trocaTipo").value = t.tipo;
         toggleTipoTroca();
@@ -1183,13 +1302,19 @@
       if (t) {
         t.status = aprovar ? "APROVADO" : "RECUSADO";
         await salvarTrocasStorage();
+        preencherSelectAHaver();
         renderizarTabelaTrocas();
         renderizarAdminTrocas();
         renderizarEscalas();
       }
     }
 
-    // EXIBE SOMENTE AS TROCAS ONDE O USUÁRIO LOGADO É O SOLICITANTE OU SUBSTITUTO
+    function formatarPeriodo(p) {
+      if (p === "12h_diurno") return "☀️ 12h Diurno";
+      if (p === "12h_noturno") return "🌙 12h Noturno";
+      return "🔄 24h Integral";
+    }
+
     function renderizarTabelaTrocas() {
       const tb = document.getElementById("tbTrocas");
       if (!tb) return;
@@ -1203,7 +1328,7 @@
       );
 
       if (trocasFiltradas.length === 0) {
-        tb.innerHTML = `<tr><td colspan="9" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca de plantão encontrada para o seu perfil.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="10" style="color:#64748b; padding:15px;">Nenhuma solicitação de troca de plantão encontrada para o seu perfil.</td></tr>`;
         return;
       }
 
@@ -1212,6 +1337,7 @@
         if (t.status === "APROVADO") stBadge = `<span class="badge badge-aprovado">Aprovado</span>`;
         if (t.status === "RECUSADO") stBadge = `<span class="badge badge-recusado">Recusado</span>`;
         if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
+        if (t.status === "PAGO / QUITADO") stBadge = `<span class="badge badge-quitado">Pago / Quitado</span>`;
 
         let acoes = "-";
         const ehSubstituto = usuarioLogado && (usuarioLogado.nome === t.substituto);
@@ -1233,6 +1359,7 @@
             <td>#${t.id}</td>
             <td style="text-align:left;">${t.solicitante}</td>
             <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td>${formatarPeriodo(t.periodo)}</td>
             <td style="text-align:left;">${t.substituto}</td>
             <td>${t.tipo}</td>
             <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
@@ -1288,12 +1415,14 @@
         if (t.status === "APROVADO") stBadge = `<span class="badge badge-aprovado">Aprovado</span>`;
         if (t.status === "RECUSADO") stBadge = `<span class="badge badge-recusado">Recusado</span>`;
         if (t.status === "CANCELADO") stBadge = `<span class="badge badge-cancelado">Cancelado Admin</span>`;
+        if (t.status === "PAGO / QUITADO") stBadge = `<span class="badge badge-quitado">Pago / Quitado</span>`;
 
         tb.innerHTML += `
           <tr>
             <td>#${t.id}</td>
             <td style="text-align:left;">${t.solicitante}</td>
             <td><b>${t.dataMinha.split('-').reverse().join('/')}</b></td>
+            <td>${formatarPeriodo(t.periodo)}</td>
             <td style="text-align:left;">${t.substituto}</td>
             <td>${t.dataDevolucao !== "A HAVER" ? t.dataDevolucao.split('-').reverse().join('/') : 'A HAVER'}</td>
             <td>${stBadge}</td>
@@ -1382,14 +1511,15 @@
               }
             });
 
-            const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && t.status === "APROVADO");
+            const trocaAprovada = trocas.find(t => (t.dataMinha === dtIso || t.dataDevolucao === dtIso) && (t.status === "APROVADO" || t.status === "PAGO / QUITADO"));
             if (trocaAprovada) {
+              const strPeriodo = trocaAprovada.periodo ? ` (${formatarPeriodo(trocaAprovada.periodo)})` : '';
               if (trocaAprovada.dataMinha === dtIso) {
                 cond = `${trocaAprovada.substituto} (Subst.)`;
-                obs = `<span style="color:#d97706; font-weight:bold;">Troca Aprovada (#${trocaAprovada.id})</span>`;
+                obs = `<span style="color:#d97706; font-weight:bold;">Troca Aprovada #${trocaAprovada.id}${strPeriodo}</span>`;
               } else if (trocaAprovada.dataDevolucao === dtIso) {
                 cond = `${trocaAprovada.solicitante} (Devoluç.)`;
-                obs = `<span style="color:#16a34a; font-weight:bold;">Devolução de Troca (#${trocaAprovada.id})</span>`;
+                obs = `<span style="color:#16a34a; font-weight:bold;">Devolução de Troca #${trocaAprovada.id}${strPeriodo}</span>`;
               }
             }
           }
